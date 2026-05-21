@@ -6,8 +6,23 @@ import {
 
 import { findNotesByCallId } from "../repositories/noteRepository.js";
 
-export function getAllCalls() {
-  return findAllCalls().filter((call) => call.is_archived === false);
+export function getAllCalls(filters = {}) {
+  let results = findAllCalls();
+  if (typeof filters.is_archived === "boolean") {
+    results = results.filter((call) => call.is_archived === filters.is_archived);
+  } else {
+    results = results.filter((call) => call.is_archived === false);
+  }
+
+  if (filters.direction) {
+    results = results.filter((call) => call.direction === filters.direction);
+  }
+
+  if (filters.call_type) {
+    results = results.filter((call) => call.call_type === filters.call_type);
+  }
+
+  return results;
 }
 
 export function getCallById(callId) {

@@ -8,17 +8,17 @@ import {
 console.log("\n=== All non-archived calls ===");
 console.log(getAllCalls());
 
-console.log("\n=== Single call with notes ===");
-console.log(getCallById("1"));
+console.log("\n=== Archived calls ===");
+console.log(getAllCalls({ is_archived: true }));
 
-console.log("\n=== Archive call with id 1 ===");
-console.log(archiveCall("1"));
+console.log("\n=== Unarchive call with ID 3 ===");
+console.log(unarchiveCall("3"));
 
-console.log("\n=== All non-archived calls after archiving id 1 ===");
-console.log(getAllCalls());
+console.log("\n=== Inbound calls ===");
+console.log(getAllCalls({ direction: "inbound" }));
 
-console.log("\n=== Try to get a call that does not exist ===");
-console.log(getCallById("999"));
+console.log("\n=== Calls of type 'missed' ===");
+console.log(getAllCalls({ call_type: "missed" }));
 
-console.log("\n=== Unarchive call with id 1 ===");
-console.log(unarchiveCall("1"));
+console.log("\n=== Inbound calls of type 'voicemail' ===");
+console.log(getAllCalls({ direction: "inbound", call_type: "voicemail" }));
