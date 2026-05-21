@@ -1,0 +1,12 @@
+{
+  "name": "call-center-backend",
+  "version": "1.0.0",
+  "description": "DevReady backend project for Call Center",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "author": "Dimitrios Giannopoulos",
+  "license": "ISC",
+  "type": "module"
+}
