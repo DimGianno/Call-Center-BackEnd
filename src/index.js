@@ -1,3 +1,4 @@
+import { validateCall } from "./utils/validators.js";
 import { createNote } from "./repositories/noteRepository.js";
 import {
   getAllCalls,
@@ -8,16 +9,14 @@ import {
   deleteCall
 } from "./services/callService.js";
 
-console.log("\n=== test call ===");
-console.log(deleteCall("3"));
-console.log(addNoteToCall("2", "This is a new note for call 2"));
-console.log(getCallById("1"));
-console.log(getCallById("2"));
-console.log(addNoteToCall("2", "This is a new new note for call 2"));
-console.log(addNoteToCall("2", "This is a new new note for call 2"));
-console.log(getCallById("2"));
+console.log("\n=== Validate all seed calls ===");
 
+getAllCalls().forEach((call) => {
+    const validationResult = validateCall(call);
 
-
-
+    if (!validationResult.isValid) {
+        console.log(`Call ${call.id} is invalid:`);
+        console.log(validationResult.errors);
+    }
+});
 
