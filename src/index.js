@@ -1,24 +1,23 @@
+import { addNoteToCall } from "./repositories/noteRepository.js";
 import {
   getAllCalls,
   getCallById,
   archiveCall,
-  unarchiveCall
+  unarchiveCall,
+  addNoteToCallService
 } from "./services/callService.js";
 
-console.log("\n=== All non-archived calls ===");
-console.log(getAllCalls());
+console.log("=== Call with ID 1 ===");
+console.log(getCallById("1"));
 
-console.log("\n=== Archived calls ===");
-console.log(getAllCalls({ is_archived: true }));
+console.log("\n=== Add a note to a call ===");
+console.log(addNoteToCallService("1", "This is a new note for call 1"));
 
-console.log("\n=== Unarchive call with ID 3 ===");
-console.log(unarchiveCall("3"));
+console.log("=== Call with ID 1 ===");
+console.log(getCallById("1"));
 
-console.log("\n=== Inbound calls ===");
-console.log(getAllCalls({ direction: "inbound" }));
+console.log("\n=== Try to add note to missing call ===");
+console.log(addNoteToCallService("999", "This should fail."));
 
-console.log("\n=== Calls of type 'missed' ===");
-console.log(getAllCalls({ call_type: "missed" }));
-
-console.log("\n=== Inbound calls of type 'voicemail' ===");
-console.log(getAllCalls({ direction: "inbound", call_type: "voicemail" }));
+console.log("\n=== Try to add empty note ===");
+console.log(addNoteToCallService("1", ""));

@@ -4,7 +4,7 @@ import {
   updateCall
 } from "../repositories/callRepository.js";
 
-import { findNotesByCallId } from "../repositories/noteRepository.js";
+import { findNotesByCallId, addNoteToCall } from "../repositories/noteRepository.js";
 
 export function getAllCalls(filters = {}) {
   let results = findAllCalls();
@@ -46,4 +46,18 @@ export function archiveCall(callId) {
 
 export function unarchiveCall(callId) {
   return updateCall(callId, { is_archived: false });
+}
+
+export function addNoteToCallService(callId, content) {
+    const call = findCallById(callId);
+
+    if (!call) {
+        return { error: "Call not found" };
+    }
+
+    if (!content || content.trim() === "") {
+        return { error: "Note content cannot be empty" };
+    }
+
+    return addNoteToCall(callId, content);
 }
