@@ -19,3 +19,15 @@ export function updateCall(callId, updatedFields) {
 
   return call;
 }
+
+export function deleteCallById(callId) {
+  const callIndex = calls.findIndex((call) => call.id === callId);
+
+  if (callIndex === -1) {
+    return false;
+  }
+
+  const deletedCall = calls.splice(callIndex, 1)[0];
+
+  return deletedCall;
+}

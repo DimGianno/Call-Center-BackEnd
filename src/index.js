@@ -1,23 +1,23 @@
-import { addNoteToCall } from "./repositories/noteRepository.js";
+import { createNote } from "./repositories/noteRepository.js";
 import {
   getAllCalls,
   getCallById,
   archiveCall,
   unarchiveCall,
-  addNoteToCallService
+  addNoteToCall,
+  deleteCall
 } from "./services/callService.js";
 
-console.log("=== Call with ID 1 ===");
+console.log("\n=== test call ===");
+console.log(deleteCall("3"));
+console.log(addNoteToCall("2", "This is a new note for call 2"));
 console.log(getCallById("1"));
+console.log(getCallById("2"));
+console.log(addNoteToCall("2", "This is a new new note for call 2"));
+console.log(addNoteToCall("2", "This is a new new note for call 2"));
+console.log(getCallById("2"));
 
-console.log("\n=== Add a note to a call ===");
-console.log(addNoteToCallService("1", "This is a new note for call 1"));
 
-console.log("=== Call with ID 1 ===");
-console.log(getCallById("1"));
 
-console.log("\n=== Try to add note to missing call ===");
-console.log(addNoteToCallService("999", "This should fail."));
 
-console.log("\n=== Try to add empty note ===");
-console.log(addNoteToCallService("1", ""));
+
