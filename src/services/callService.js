@@ -28,3 +28,7 @@ export function getCallById(callId) {
 export function archiveCall(callId) {
   return updateCall(callId, { is_archived: true });
 }
+
+export function unarchiveCall(callId) {
+  return updateCall(callId, { is_archived: false });
+}
