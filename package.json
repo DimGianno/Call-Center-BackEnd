@@ -1,20 +1,20 @@
 {
-  "name": "call-center-backend",
-  "version": "1.0.0",
-  "description": "DevReady backend project for Call Center",
-  "main": "src/index.js",
-  "scripts": {
-    "start": "node src/index.js",
-    "lint": "eslint src",
-    "format": "prettier . --write",
-    "format:check": "prettier . --check"
-  },
-  "author": "Dimitrios Giannopoulos",
-  "license": "ISC",
-  "type": "module",
-  "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.4.0",
-    "prettier": "^3.8.3"
-  }
+    "name": "call-center-backend",
+    "version": "1.0.0",
+    "description": "DevReady backend project for Call Center",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "node src/index.js",
+        "lint": "eslint src",
+        "format": "prettier . --write",
+        "format:check": "prettier . --check"
+    },
+    "author": "Dimitrios Giannopoulos",
+    "license": "ISC",
+    "type": "module",
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.4.0",
+        "prettier": "^3.8.3"
+    }
 }

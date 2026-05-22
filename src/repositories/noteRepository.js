@@ -15,28 +15,28 @@ function getHighestNoteNumber() {
 let nextNoteNumber = getHighestNoteNumber() + 1;
 
 export function findNotesByCallId(callId) {
-  return notes.filter((note) => note.call_id === callId);
+    return notes.filter((note) => note.call_id === callId);
 }
 
 export function createNote(callId, content) {
-  const newNote = {
-    id: `note-${nextNoteNumber++}`,
-    call_id: callId,
-    content: content
-  };
-  notes.push(newNote);
-  return newNote;
+    const newNote = {
+        id: `note-${nextNoteNumber++}`,
+        call_id: callId,
+        content: content
+    };
+    notes.push(newNote);
+    return newNote;
 }
 
 export function deleteNotesByCallId(callId) {
-  const deletedNotes = [];
+    const deletedNotes = [];
 
-  for (let i = notes.length - 1; i >= 0; i--) {
-    if (notes[i].call_id === callId) {
-      const removedNotes = notes.splice(i, 1);
-      deletedNotes.push(removedNotes[0]);
+    for (let i = notes.length - 1; i >= 0; i--) {
+        if (notes[i].call_id === callId) {
+            const removedNotes = notes.splice(i, 1);
+            deletedNotes.push(removedNotes[0]);
+        }
     }
-  }
 
-  return deletedNotes;
+    return deletedNotes;
 }

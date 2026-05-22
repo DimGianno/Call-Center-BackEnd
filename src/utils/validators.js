@@ -12,7 +12,6 @@ export function isValidPhoneNumber(phone) {
     return typeof phone === "string" && PHONE_REGEX.test(phone);
 }
 
-
 export function validateCall(call) {
     const errors = [];
 
@@ -24,11 +23,19 @@ export function validateCall(call) {
         errors.push("Direction must be either 'inbound' or 'outbound'");
     }
 
-    if (!call.from || typeof call.from !== "string" || !isValidPhoneNumber(call.from)) {
+    if (
+        !call.from ||
+        typeof call.from !== "string" ||
+        !isValidPhoneNumber(call.from)
+    ) {
         errors.push("From phone number is required and must be a valid string");
     }
 
-    if (!call.to || typeof call.to !== "string" || !isValidPhoneNumber(call.to)) {
+    if (
+        !call.to ||
+        typeof call.to !== "string" ||
+        !isValidPhoneNumber(call.to)
+    ) {
         errors.push("To phone number is required and must be a valid string");
     }
 
