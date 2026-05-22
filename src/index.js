@@ -18,5 +18,10 @@ getAllCalls().forEach((call) => {
         console.log(`Call ${call.id} is invalid:`);
         console.log(validationResult.errors);
     }
+    else {
+        console.log(`Call ${call.id} is valid.`);
+    }
 });
 
+console.log("\n=== Validate specific call ===");
+console.log(getCallById("abc"));

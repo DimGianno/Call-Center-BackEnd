@@ -11,6 +11,10 @@ import {
     deleteNotesByCallId 
 } from "../repositories/noteRepository.js";
 
+import { 
+  isValidCallId
+} from "../utils/validators.js";
+
 export function getAllCalls(filters = {}) {
   let results = findAllCalls();
   if (typeof filters.is_archived === "boolean") {
@@ -33,6 +37,10 @@ export function getAllCalls(filters = {}) {
 }
 
 export function getCallById(callId) {
+  if (!isValidCallId(callId)) {
+    return { error: "Invalid call ID format" };
+  }
+
   const call = findCallById(callId);
   if (!call) {
     return { error: "Call not found" };
@@ -46,6 +54,9 @@ export function getCallById(callId) {
 }
 
 export function archiveCall(callId) {
+    if (!isValidCallId(callId)) {
+      return { error: "Invalid call ID format" };
+    }
     const call = findCallById(callId);
     if (!call) {
     return { error: "Call not found" };
@@ -59,6 +70,9 @@ export function archiveCall(callId) {
 }
 
 export function unarchiveCall(callId) {
+    if (!isValidCallId(callId)) {
+        return { error: "Invalid call ID format" };
+    }
     const call = findCallById(callId);
     if (!call) {
     return { error: "Call not found" };
@@ -72,6 +86,9 @@ export function unarchiveCall(callId) {
 }
 
 export function addNoteToCall(callId, content) {
+    if (!isValidCallId(callId)) {
+        return { error: "Invalid call ID format" };
+    }
     const call = findCallById(callId);
 
     if (!call) {
@@ -87,6 +104,10 @@ export function addNoteToCall(callId, content) {
 }
 
 export function deleteCall(callId) {
+    if (!isValidCallId(callId)) {
+        return { error: "Invalid call ID format" };
+    }
+
     const call = findCallById(callId);
 
     if (!call) {
