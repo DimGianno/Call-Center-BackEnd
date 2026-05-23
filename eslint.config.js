@@ -1,19 +1,17 @@
 import js from "@eslint/js";
+import tseslint from "typescript-eslint";
 
 export default [
     js.configs.recommended,
+    ...tseslint.configs.recommended,
     {
         files: ["src/**/*.js"],
         languageOptions: {
             ecmaVersion: "latest",
-            sourceType: "module",
-            globals: {
-                console: "readonly"
-            }
+            sourceType: "module"
         },
         rules: {
-            "no-unused-vars": "warn",
-            "no-undef": "error"
+            "@typescript-eslint/no-unused-vars": "warn"
         }
     }
 ];

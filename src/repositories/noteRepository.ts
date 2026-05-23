@@ -1,6 +1,7 @@
 import { notes } from "../data/notes.js";
+import type { Note } from "../models/noteModel.js";
 
-function getHighestNoteNumber() {
+function getHighestNoteNumber(): number {
     return notes.reduce((highestNumber, note) => {
         const noteNumber = Number(note.id.replace("note-", ""));
 
@@ -14,12 +15,12 @@ function getHighestNoteNumber() {
 
 let nextNoteNumber = getHighestNoteNumber() + 1;
 
-export function findNotesByCallId(callId) {
+export function findNotesByCallId(callId: string): Note[] {
     return notes.filter((note) => note.call_id === callId);
 }
 
-export function createNote(callId, content) {
-    const newNote = {
+export function createNote(callId: string, content: string): Note {
+    const newNote: Note = {
         id: `note-${nextNoteNumber++}`,
         call_id: callId,
         content: content
@@ -28,8 +29,8 @@ export function createNote(callId, content) {
     return newNote;
 }
 
-export function deleteNotesByCallId(callId) {
-    const deletedNotes = [];
+export function deleteNotesByCallId(callId: string): Note[] {
+    const deletedNotes: Note[] = [];
 
     for (let i = notes.length - 1; i >= 0; i--) {
         if (notes[i].call_id === callId) {

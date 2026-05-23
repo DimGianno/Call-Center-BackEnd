@@ -1,14 +1,18 @@
 import { calls } from "../data/calls.js";
+import type { Call } from "../models/callModel.js";
 
-export function findAllCalls() {
+export function findAllCalls(): Call[] {
     return calls;
 }
 
-export function findCallById(callId) {
+export function findCallById(callId: string): Call | null {
     return calls.find((call) => call.id === callId) || null;
 }
 
-export function updateCall(callId, updatedFields) {
+export function updateCall(
+    callId: string,
+    updatedFields: Partial<Call>
+): Call | null {
     const call = findCallById(callId);
 
     if (!call) {
@@ -20,11 +24,11 @@ export function updateCall(callId, updatedFields) {
     return call;
 }
 
-export function deleteCallById(callId) {
+export function deleteCallById(callId: string): Call | null {
     const callIndex = calls.findIndex((call) => call.id === callId);
 
     if (callIndex === -1) {
-        return false;
+        return null;
     }
 
     const deletedCall = calls.splice(callIndex, 1)[0];

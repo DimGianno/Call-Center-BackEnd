@@ -1,4 +1,6 @@
-export const calls = [
+import type { Call } from "../models/callModel.js";
+
+export const calls: Call[] = [
     {
         id: "1",
         direction: "inbound",

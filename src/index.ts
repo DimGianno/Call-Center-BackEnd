@@ -10,17 +10,20 @@ import {
 } from "./services/callService.js";
 
 console.log("\n=== Validate all seed calls ===");
+const activeCalls = getAllCalls();
 
-getAllCalls().forEach((call) => {
-    const validationResult = validateCall(call);
+if (activeCalls.length === 0) {
+    console.log("No active calls found.");
+} else {
+    activeCalls.forEach((call) => {
+        const validationResult = validateCall(call);
 
-    if (!validationResult.isValid) {
-        console.log(`Call ${call.id} is invalid:`);
-        console.log(validationResult.errors);
-    } else {
-        console.log(`Call ${call.id} is valid.`);
-    }
-});
+        if (!validationResult.isValid) {
+            console.log(`Call ${call.id} is invalid:`);
+            console.log(validationResult.errors);
+        }
+    });
+}
 
 console.log("\n=== Validate specific call ===");
 console.log(getCallById("abc"));
@@ -29,3 +32,5 @@ console.log("\n=== Archive call ===");
 console.log(archiveCall("1"));
 console.log("\n=== Unarchive call ===");
 console.log(unarchiveCall("1"));
+console.log("\n=== Add note to call ===");
+console.log(addNoteToCall("1", "TestTestTestTestTestTestTestTestTestTestTest"));

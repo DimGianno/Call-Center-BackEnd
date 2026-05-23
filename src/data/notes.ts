@@ -1,4 +1,6 @@
-export const notes = [
+import type { Note } from "../models/noteModel.js";
+
+export const notes: Note[] = [
     {
         id: "note-1",
         call_id: "3",

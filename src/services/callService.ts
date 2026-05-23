@@ -11,9 +11,17 @@ import {
     deleteNotesByCallId
 } from "../repositories/noteRepository.js";
 
+import type { Call, CallFilters } from "../models/callModel.js";
+import type { Note } from "../models/noteModel.js";
+import type {
+    CallWithNotes,
+    CommandResult,
+    ServiceError
+} from "../models/serviceTypes.js";
+
 import { isValidCallId } from "../utils/validators.js";
 
-export function getAllCalls(filters = {}) {
+export function getAllCalls(filters: CallFilters = {}): Call[] {
     let results = findAllCalls();
     if (typeof filters.is_archived === "boolean") {
         results = results.filter(
@@ -34,13 +42,11 @@ export function getAllCalls(filters = {}) {
             (call) => call.call_type === filters.call_type
         );
     }
-    if (results.length === 0) {
-        return { message: "No calls found or bad filters" };
-    }
+
     return results;
 }
 
-export function getCallById(callId) {
+export function getCallById(callId: string): CallWithNotes | ServiceError {
     if (!isValidCallId(callId)) {
         return { error: "Invalid call ID format" };
     }
@@ -57,7 +63,7 @@ export function getCallById(callId) {
     };
 }
 
-export function archiveCall(callId) {
+export function archiveCall(callId: string): CommandResult {
     if (!isValidCallId(callId)) {
         return { error: "Invalid call ID format" };
     }
@@ -73,7 +79,7 @@ export function archiveCall(callId) {
     return { message: `Call ${callId} archived successfully` };
 }
 
-export function unarchiveCall(callId) {
+export function unarchiveCall(callId: string): CommandResult {
     if (!isValidCallId(callId)) {
         return { error: "Invalid call ID format" };
     }
@@ -89,7 +95,10 @@ export function unarchiveCall(callId) {
     return { message: `Call ${callId} unarchived successfully` };
 }
 
-export function addNoteToCall(callId, content) {
+export function addNoteToCall(
+    callId: string,
+    content: string
+): CallWithNotes | ServiceError {
     if (!isValidCallId(callId)) {
         return { error: "Invalid call ID format" };
     }
@@ -104,10 +113,16 @@ export function addNoteToCall(callId, content) {
     }
 
     createNote(callId, content.trim());
-    return { message: `Note added to call ${callId} successfully` };
+
+    const notes = findNotesByCallId(callId);
+
+    return {
+        ...call,
+        notes
+    };
 }
 
-export function deleteCall(callId) {
+export function deleteCall(callId: string): CommandResult {
     if (!isValidCallId(callId)) {
         return { error: "Invalid call ID format" };
     }
