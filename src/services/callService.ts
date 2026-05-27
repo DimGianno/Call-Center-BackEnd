@@ -17,13 +17,14 @@ import type {
     ServiceResult,
 } from "../models/serviceTypes.js";
 
-import { isValidCallId } from "../utils/validators.js";
+import { isValidMongoObjectId  } from "../utils/validators.js";
 
 import { CallDbModel } from "../db/models/callDbModel.js";
 import {
     mapCallDocumentToCall,
     mapCallDocumentToCallWithNotes,
 } from "../mappers/callMapper.js";
+
 
 
 export async function getAllCalls(filters: CallFilters = {}): Promise<ServiceResult<Call[]>> {
@@ -52,6 +53,14 @@ export async function getAllCalls(filters: CallFilters = {}): Promise<ServiceRes
 }
 
 export async function getCallById(callId: string): Promise<ServiceResult<CallWithNotes>> {
+    if (!isValidMongoObjectId(callId)) {
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Invalid call ID format",
+        };
+    }
+
     const call = await CallDbModel.findById(callId);
 
     if (!call) {
@@ -69,6 +78,14 @@ export async function getCallById(callId: string): Promise<ServiceResult<CallWit
 }
 
 export async function archiveCall(callId: string): Promise<ServiceResult<Call>> {
+    if (!isValidMongoObjectId(callId)) {
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Invalid call ID format",
+        };
+    }
+    
     const call = await CallDbModel.findById(callId);
 
     if (!call) {
@@ -97,13 +114,14 @@ export async function archiveCall(callId: string): Promise<ServiceResult<Call>> 
 }
 
 export function unarchiveCall(callId: string): ServiceResult<Call> {
-    if (!isValidCallId(callId)) {
+    if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
             statusCode: 400,
             error: "Invalid call ID format",
         };
     }
+    
     const call = findCallById(callId);
     if (!call) {
         return {
@@ -139,13 +157,14 @@ export function addNoteToCall(
     callId: string,
     content: string
 ): ServiceResult<CallWithNotes> {
-    if (!isValidCallId(callId)) {
+    if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
             statusCode: 400,
             error: "Invalid call ID format",
         };
     }
+    
     const call = findCallById(callId);
 
     if (!call) {
@@ -175,14 +194,14 @@ export function addNoteToCall(
 }
 
 export function deleteCall(callId: string): ServiceResult<{message: string}> {
-    if (!isValidCallId(callId)) {
+    if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
             statusCode: 400,
             error: "Invalid call ID format",
         };
     }
-
+    
     const call = findCallById(callId);
 
     if (!call) {
