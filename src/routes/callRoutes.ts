@@ -1,25 +1,16 @@
 import { Router } from "express";
+import {
+    getAllCallsController,
+    getCallByIdController,
+    archiveCallController,
+} from "../controllers/callControllers.js"
 
 const router = Router();
 
-router.get("/", (_req, res) => {
-    res.json({
-        message: "Get all calls route works",
-    });
-});
+router.get("/", getAllCallsController);
 
-router.get("/:callId", (req, res) => {
-    res.json({
-        message: "Get single call route works",
-        callId: req.params.callId,
-    });
-});
+router.get("/:callId", getCallByIdController);
 
-router.patch("/:callId/archive", (req, res) => {
-    res.json({
-        message: "Archive call route works",
-        callId: req.params.callId,
-    });
-});
+router.patch("/:callId/archive", archiveCallController);
 
 export default router;
