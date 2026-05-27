@@ -113,7 +113,7 @@ export async function archiveCall(callId: string): Promise<ServiceResult<Call>> 
     };
 }
 
-export function unarchiveCall(callId: string): ServiceResult<Call> {
+export async function unarchiveCall(callId: string): Promise<ServiceResult<Call>> {
     if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
@@ -121,8 +121,9 @@ export function unarchiveCall(callId: string): ServiceResult<Call> {
             error: "Invalid call ID format",
         };
     }
+
+    const call = await CallDbModel.findById(callId);
     
-    const call = findCallById(callId);
     if (!call) {
         return {
             success: false,
@@ -138,18 +139,13 @@ export function unarchiveCall(callId: string): ServiceResult<Call> {
         };
     }
 
-    const updatedCall = updateCall(callId, { is_archived: false });
+    call.is_archived = false;
 
-    if (!updatedCall) {
-        return {
-            success: false,
-            statusCode: 500,
-            error: "Failed to unarchive call",
-        };
-    }
+    const updatedCall = await call.save();
+
     return { 
         success: true,
-        data: updatedCall,
+        data: mapCallDocumentToCall(updatedCall),
     };
 }
 
