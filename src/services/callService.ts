@@ -12,16 +12,14 @@ import {
 } from "../repositories/noteRepository.js";
 
 import type { Call, CallFilters } from "../models/callModel.js";
-import type { Note } from "../models/noteModel.js";
 import type {
     CallWithNotes,
-    CommandResult,
-    ServiceError
+    ServiceResult,
 } from "../models/serviceTypes.js";
 
 import { isValidCallId } from "../utils/validators.js";
 
-export function getAllCalls(filters: CallFilters = {}): Call[] {
+export function getAllCalls(filters: CallFilters = {}): ServiceResult<Call[]> {
     let results = findAllCalls();
     if (typeof filters.is_archived === "boolean") {
         results = results.filter(
@@ -43,73 +41,143 @@ export function getAllCalls(filters: CallFilters = {}): Call[] {
         );
     }
 
-    return results;
+    return {
+        success: true,
+        data: results,
+    };
 }
 
-export function getCallById(callId: string): CallWithNotes | ServiceError {
+export function getCallById(callId: string): ServiceResult<CallWithNotes> {
     if (!isValidCallId(callId)) {
-        return { error: "Invalid call ID format" };
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Invalid call ID format",
+        };
     }
 
     const call = findCallById(callId);
     if (!call) {
-        return { error: "Call not found" };
+        return {
+            success: false,
+            statusCode: 404,
+            error: "Call not found",
+        };
     }
 
     const notes = findNotesByCallId(callId);
     return {
-        ...call,
-        notes
+        success: true,
+        data: { ...call, notes },
     };
 }
 
-export function archiveCall(callId: string): CommandResult {
+export function archiveCall(callId: string): ServiceResult<Call> {
     if (!isValidCallId(callId)) {
-        return { error: "Invalid call ID format" };
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Invalid call ID format",
+        };
     }
     const call = findCallById(callId);
     if (!call) {
-        return { error: "Call not found" };
+        return {
+            success: false,
+            statusCode: 404,
+            error: "Call not found",
+        };
     }
     if (call.is_archived) {
-        return { error: "Call is already archived" };
+        return { 
+            success: false,
+            statusCode: 400,
+            error: "Call is already archived",
+        };
     }
 
-    updateCall(callId, { is_archived: true });
-    return { message: `Call ${callId} archived successfully` };
+    const updatedCall = updateCall(callId, { is_archived: true });
+
+    if (!updatedCall) {
+        return {
+            success: false,
+            statusCode: 500,
+            error: "Failed to archive call",
+        };
+    }
+
+    return { 
+        success: true,
+        data: updatedCall,
+    };
 }
 
-export function unarchiveCall(callId: string): CommandResult {
+export function unarchiveCall(callId: string): ServiceResult<Call> {
     if (!isValidCallId(callId)) {
-        return { error: "Invalid call ID format" };
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Invalid call ID format",
+        };
     }
     const call = findCallById(callId);
     if (!call) {
-        return { error: "Call not found" };
+        return {
+            success: false,
+            statusCode: 404,
+            error: "Call not found",
+        };
     }
     if (!call.is_archived) {
-        return { error: "Call is not archived" };
+        return { 
+            success: false,
+            statusCode: 400,
+            error: "Call is not archived",
+        };
     }
 
-    updateCall(callId, { is_archived: false });
-    return { message: `Call ${callId} unarchived successfully` };
+    const updatedCall = updateCall(callId, { is_archived: false });
+
+    if (!updatedCall) {
+        return {
+            success: false,
+            statusCode: 500,
+            error: "Failed to unarchive call",
+        };
+    }
+    return { 
+        success: true,
+        data: updatedCall,
+    };
 }
 
 export function addNoteToCall(
     callId: string,
     content: string
-): CallWithNotes | ServiceError {
+): ServiceResult<CallWithNotes> {
     if (!isValidCallId(callId)) {
-        return { error: "Invalid call ID format" };
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Invalid call ID format",
+        };
     }
     const call = findCallById(callId);
 
     if (!call) {
-        return { error: "Call not found" };
+        return {
+            success: false,
+            statusCode: 404,
+            error: "Call not found",
+        };
     }
 
     if (!content || content.trim() === "") {
-        return { error: "Note content cannot be empty" };
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Note content cannot be empty",
+        };
     }
 
     createNote(callId, content.trim());
@@ -117,25 +185,36 @@ export function addNoteToCall(
     const notes = findNotesByCallId(callId);
 
     return {
-        ...call,
-        notes
+        success: true,
+        data: { ...call, notes }, 
     };
 }
 
-export function deleteCall(callId: string): CommandResult {
+export function deleteCall(callId: string): ServiceResult<{message: string}> {
     if (!isValidCallId(callId)) {
-        return { error: "Invalid call ID format" };
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Invalid call ID format",
+        };
     }
 
     const call = findCallById(callId);
 
     if (!call) {
-        return { error: "Call not found" };
+        return {
+            success: false,
+            statusCode: 404,
+            error: "Call not found",
+        };
     }
 
     deleteNotesByCallId(callId);
     deleteCallById(callId);
     return {
-        message: `Call ${callId} and associated notes deleted successfully`
+        success: true,
+        data: {
+            message: `Call ${callId} and associated notes deleted successfully`,
+        },
     };
 }

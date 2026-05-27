@@ -79,17 +79,4 @@ console.log(deleteCall("3"));
 printSection("22. Validate all remaining active calls");
 const activeCalls = getAllCalls();
 
-if (activeCalls.length === 0) {
-    console.log("No active calls found.");
-} else {
-    activeCalls.forEach((call) => {
-        const validationResult = validateCall(call);
 
-        if (validationResult.isValid) {
-            console.log(`Call ${call.id} is valid.`);
-        } else {
-            console.log(`Call ${call.id} is invalid:`);
-            console.log(validationResult.errors);
-        }
-    });
-}
