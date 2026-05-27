@@ -149,10 +149,10 @@ export async function unarchiveCall(callId: string): Promise<ServiceResult<Call>
     };
 }
 
-export function addNoteToCall(
+export async function addNoteToCall(
     callId: string,
     content: string
-): ServiceResult<CallWithNotes> {
+): Promise<ServiceResult<CallWithNotes>> {
     if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
@@ -161,7 +161,15 @@ export function addNoteToCall(
         };
     }
     
-    const call = findCallById(callId);
+    if (!content || content.trim() === "") {
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Note content cannot be empty",
+        };
+    }
+
+    const call = await CallDbModel.findById(callId);
 
     if (!call) {
         return {
@@ -171,21 +179,15 @@ export function addNoteToCall(
         };
     }
 
-    if (!content || content.trim() === "") {
-        return {
-            success: false,
-            statusCode: 400,
-            error: "Note content cannot be empty",
-        };
-    }
+    call.notes.push({
+        content: content.trim(),
+    } as never);
 
-    createNote(callId, content.trim());
-
-    const notes = findNotesByCallId(callId);
+    const updatedCall = await call.save();
 
     return {
         success: true,
-        data: { ...call, notes }, 
+        data: mapCallDocumentToCallWithNotes(updatedCall), 
     };
 }
 
