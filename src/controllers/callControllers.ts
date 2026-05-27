@@ -6,8 +6,8 @@ import {
 } from "../services/callService.js";
 import { error } from "node:console";
 
-export const getAllCallsController = (_req: Request, res: Response) => {
-    const result = getAllCalls();
+export const getAllCallsController = async (_req: Request, res: Response) => {
+    const result = await getAllCalls();
     
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -21,7 +21,7 @@ export const getAllCallsController = (_req: Request, res: Response) => {
     });
 };
 
-export const getCallByIdController = (req: Request, res: Response) => {
+export const getCallByIdController = async (req: Request, res: Response) => {
     const callId = req.params.callId;
 
     if (!callId || typeof callId !== "string") {
@@ -31,7 +31,7 @@ export const getCallByIdController = (req: Request, res: Response) => {
         return;
     }
 
-    const result = getCallById(callId);
+    const result = await getCallById(callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -43,7 +43,7 @@ export const getCallByIdController = (req: Request, res: Response) => {
     res.status(200).json(result.data);
 };
 
-export const archiveCallController = (req: Request, res: Response) => {
+export const archiveCallController = async (req: Request, res: Response) => {
     const callId = req.params.callId;
 
     if (!callId || typeof callId !== "string") {
@@ -53,7 +53,7 @@ export const archiveCallController = (req: Request, res: Response) => {
         return;
     }
 
-    const result = archiveCall(callId);
+    const result = await archiveCall(callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({

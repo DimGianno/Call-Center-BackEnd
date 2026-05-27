@@ -1,5 +1,4 @@
 import type { Call } from "./callModel.js";
-import type { Note } from "./noteModel.js";
 
 export type ServiceSuccess<T> = {
   success: true;
@@ -14,6 +13,11 @@ export type ServiceError = {
 
 export type ServiceResult<T> = ServiceSuccess<T> | ServiceError;
 
+export type NoteResponse = {
+  id: string;
+  content: string;
+};
+
 export type CallWithNotes = Call & {
-  notes: Note[];
+  notes: NoteResponse[];
 };

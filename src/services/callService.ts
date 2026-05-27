@@ -19,44 +19,41 @@ import type {
 
 import { isValidCallId } from "../utils/validators.js";
 
-export function getAllCalls(filters: CallFilters = {}): ServiceResult<Call[]> {
-    let results = findAllCalls();
+import { CallDbModel } from "../db/models/callDbModel.js";
+import {
+    mapCallDocumentToCall,
+    mapCallDocumentToCallWithNotes,
+} from "../mappers/callMapper.js";
+
+
+export async function getAllCalls(filters: CallFilters = {}): Promise<ServiceResult<Call[]>> {
+    const query: Partial<CallFilters> = {};
+
     if (typeof filters.is_archived === "boolean") {
-        results = results.filter(
-            (call) => call.is_archived === filters.is_archived
-        );
+        query.is_archived = filters.is_archived;
     } else {
-        results = results.filter((call) => call.is_archived === false);
+        query.is_archived = false;
     }
 
     if (filters.direction) {
-        results = results.filter(
-            (call) => call.direction === filters.direction
-        );
+        query.direction = filters.direction;
     }
 
     if (filters.call_type) {
-        results = results.filter(
-            (call) => call.call_type === filters.call_type
-        );
+        query.call_type = filters.call_type;
     }
+
+    const calls = await CallDbModel.find(query).sort({ created_at: -1});
 
     return {
         success: true,
-        data: results,
+        data: calls.map(mapCallDocumentToCall),
     };
 }
 
-export function getCallById(callId: string): ServiceResult<CallWithNotes> {
-    if (!isValidCallId(callId)) {
-        return {
-            success: false,
-            statusCode: 400,
-            error: "Invalid call ID format",
-        };
-    }
+export async function getCallById(callId: string): Promise<ServiceResult<CallWithNotes>> {
+    const call = await CallDbModel.findById(callId);
 
-    const call = findCallById(callId);
     if (!call) {
         return {
             success: false,
@@ -65,22 +62,15 @@ export function getCallById(callId: string): ServiceResult<CallWithNotes> {
         };
     }
 
-    const notes = findNotesByCallId(callId);
     return {
         success: true,
-        data: { ...call, notes },
+        data: mapCallDocumentToCallWithNotes(call),
     };
 }
 
-export function archiveCall(callId: string): ServiceResult<Call> {
-    if (!isValidCallId(callId)) {
-        return {
-            success: false,
-            statusCode: 400,
-            error: "Invalid call ID format",
-        };
-    }
-    const call = findCallById(callId);
+export async function archiveCall(callId: string): Promise<ServiceResult<Call>> {
+    const call = await CallDbModel.findById(callId);
+
     if (!call) {
         return {
             success: false,
@@ -96,19 +86,13 @@ export function archiveCall(callId: string): ServiceResult<Call> {
         };
     }
 
-    const updatedCall = updateCall(callId, { is_archived: true });
+    call.is_archived = true;
 
-    if (!updatedCall) {
-        return {
-            success: false,
-            statusCode: 500,
-            error: "Failed to archive call",
-        };
-    }
+    const updatedCall = await call.save();
 
     return { 
         success: true,
-        data: updatedCall,
+        data: mapCallDocumentToCall(updatedCall),
     };
 }
 
