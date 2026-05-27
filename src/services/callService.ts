@@ -191,7 +191,7 @@ export async function addNoteToCall(
     };
 }
 
-export function deleteCall(callId: string): ServiceResult<{message: string}> {
+export async function deleteCall(callId: string): Promise<ServiceResult<{message: string}>> {
     if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
@@ -200,9 +200,9 @@ export function deleteCall(callId: string): ServiceResult<{message: string}> {
         };
     }
     
-    const call = findCallById(callId);
+    const deletedCall = await CallDbModel.findByIdAndDelete(callId);
 
-    if (!call) {
+    if (!deletedCall) {
         return {
             success: false,
             statusCode: 404,
@@ -210,8 +210,6 @@ export function deleteCall(callId: string): ServiceResult<{message: string}> {
         };
     }
 
-    deleteNotesByCallId(callId);
-    deleteCallById(callId);
     return {
         success: true,
         data: {
