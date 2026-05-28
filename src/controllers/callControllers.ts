@@ -10,6 +10,9 @@ import {
     unarchiveAllCalls
 } from "../services/callService.js";
 import type { CallFilters } from "../models/callModel.js";
+type CallIdParams = {
+    callId: string;
+};
 
 export const getAllCallsController = async (req: Request, res: Response) => {
     const filters: CallFilters = {};
@@ -97,15 +100,8 @@ export const getAllCallsController = async (req: Request, res: Response) => {
     });
 };
 
-export const getCallByIdController = async (req: Request, res: Response) => {
+export const getCallByIdController = async (req: Request<CallIdParams>, res: Response) => {
     const callId = req.params.callId;
-
-    if (!callId || typeof callId !== "string") {
-        res.status(400).json({
-            error: "Call ID is required and must be a string"
-        });
-        return;
-    }
 
     const result = await getCallById(callId);
 
@@ -119,15 +115,8 @@ export const getCallByIdController = async (req: Request, res: Response) => {
     res.status(200).json(result.data);
 };
 
-export const archiveCallController = async (req: Request, res: Response) => {
+export const archiveCallController = async (req: Request<CallIdParams>, res: Response) => {
     const callId = req.params.callId;
-
-    if (!callId || typeof callId !== "string") {
-        res.status(400).json({
-            error: "Call ID is required and must be a string"
-        });
-        return;
-    }
 
     const result = await archiveCall(callId);
 
@@ -141,15 +130,8 @@ export const archiveCallController = async (req: Request, res: Response) => {
     res.status(200).json(result.data);
 };
 
-export const unarchiveCallController = async (req: Request, res: Response) => {
+export const unarchiveCallController = async (req: Request<CallIdParams>, res: Response) => {
     const callId = req.params.callId;
-
-    if (!callId || typeof callId !== "string") {
-        res.status(400).json({
-            error: "Call ID is required and must be a string"
-        });
-        return;
-    }
 
     const result = await unarchiveCall(callId);
 
@@ -163,15 +145,8 @@ export const unarchiveCallController = async (req: Request, res: Response) => {
     res.status(200).json(result.data);
 };
 
-export const addNoteToCallController = async (req: Request, res: Response) => {
+export const addNoteToCallController = async (req: Request<CallIdParams>, res: Response) => {
     const callId = req.params.callId;
-
-    if (!callId || typeof callId !== "string") {
-        res.status(400).json({
-            error: "Call ID is required and must be a string"
-        });
-        return;
-    }
 
     const content = req.body.content;
 
@@ -194,15 +169,8 @@ export const addNoteToCallController = async (req: Request, res: Response) => {
     res.status(201).json(result.data);
 };
 
-export const deleteCallController = async (req: Request, res: Response) => {
+export const deleteCallController = async (req: Request<CallIdParams>, res: Response) => {
     const callId = req.params.callId;
-
-    if (!callId || typeof callId !== "string") {
-        res.status(400).json({
-            error: "Call ID is required and must be a string"
-        });
-        return;
-    }
 
     const result = await deleteCall(callId);
 
