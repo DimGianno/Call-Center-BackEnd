@@ -3,20 +3,21 @@ import type {
     CallWithNotes,
     PaginatedResult,
     PaginationOptions,
-    ServiceResult,
+    ServiceResult
 } from "../models/serviceTypes.js";
 
-import { isValidMongoObjectId  } from "../utils/validators.js";
+import { isValidMongoObjectId } from "../utils/validators.js";
 
 import { CallDbModel } from "../db/models/callDbModel.js";
 import {
     mapCallDocumentToCall,
-    mapCallDocumentToCallWithNotes,
+    mapCallDocumentToCallWithNotes
 } from "../mappers/callMapper.js";
 
-
-
-export async function getAllCalls(filters: CallFilters = {}, paginationOptions: PaginationOptions = { page: 1, limit: 10 }): Promise<ServiceResult<PaginatedResult<Call>>> {
+export async function getAllCalls(
+    filters: CallFilters = {},
+    paginationOptions: PaginationOptions = { page: 1, limit: 10 }
+): Promise<ServiceResult<PaginatedResult<Call>>> {
     const query: Partial<CallFilters> = {};
 
     if (typeof filters.is_archived === "boolean") {
@@ -36,12 +37,12 @@ export async function getAllCalls(filters: CallFilters = {}, paginationOptions: 
     const { page, limit } = paginationOptions;
     const skip = (page - 1) * limit;
 
-    const [ calls, totalItems ] = await Promise.all([
+    const [calls, totalItems] = await Promise.all([
         CallDbModel.find(query)
-            .sort({ created_at: -1})
+            .sort({ created_at: -1 })
             .skip(skip)
             .limit(limit),
-           CallDbModel.countDocuments(query),
+        CallDbModel.countDocuments(query)
     ]);
 
     const totalPages = Math.ceil(totalItems / limit);
@@ -56,18 +57,20 @@ export async function getAllCalls(filters: CallFilters = {}, paginationOptions: 
                 totalItems,
                 totalPages,
                 hasNextPage: page < totalPages,
-                hasPreviousPage: page > 1,
-            },
-        },
+                hasPreviousPage: page > 1
+            }
+        }
     };
 }
 
-export async function getCallById(callId: string): Promise<ServiceResult<CallWithNotes>> {
+export async function getCallById(
+    callId: string
+): Promise<ServiceResult<CallWithNotes>> {
     if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
             statusCode: 400,
-            error: "Invalid call ID format",
+            error: "Invalid call ID format"
         };
     }
 
@@ -77,39 +80,41 @@ export async function getCallById(callId: string): Promise<ServiceResult<CallWit
         return {
             success: false,
             statusCode: 404,
-            error: "Call not found",
+            error: "Call not found"
         };
     }
 
     return {
         success: true,
-        data: mapCallDocumentToCallWithNotes(call),
+        data: mapCallDocumentToCallWithNotes(call)
     };
 }
 
-export async function archiveCall(callId: string): Promise<ServiceResult<Call>> {
+export async function archiveCall(
+    callId: string
+): Promise<ServiceResult<Call>> {
     if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
             statusCode: 400,
-            error: "Invalid call ID format",
+            error: "Invalid call ID format"
         };
     }
-    
+
     const call = await CallDbModel.findById(callId);
 
     if (!call) {
         return {
             success: false,
             statusCode: 404,
-            error: "Call not found",
+            error: "Call not found"
         };
     }
     if (call.is_archived) {
-        return { 
+        return {
             success: false,
             statusCode: 400,
-            error: "Call is already archived",
+            error: "Call is already archived"
         };
     }
 
@@ -117,35 +122,37 @@ export async function archiveCall(callId: string): Promise<ServiceResult<Call>> 
 
     const updatedCall = await call.save();
 
-    return { 
+    return {
         success: true,
-        data: mapCallDocumentToCall(updatedCall),
+        data: mapCallDocumentToCall(updatedCall)
     };
 }
 
-export async function unarchiveCall(callId: string): Promise<ServiceResult<Call>> {
+export async function unarchiveCall(
+    callId: string
+): Promise<ServiceResult<Call>> {
     if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
             statusCode: 400,
-            error: "Invalid call ID format",
+            error: "Invalid call ID format"
         };
     }
 
     const call = await CallDbModel.findById(callId);
-    
+
     if (!call) {
         return {
             success: false,
             statusCode: 404,
-            error: "Call not found",
+            error: "Call not found"
         };
     }
     if (!call.is_archived) {
-        return { 
+        return {
             success: false,
             statusCode: 400,
-            error: "Call is not archived",
+            error: "Call is not archived"
         };
     }
 
@@ -153,9 +160,9 @@ export async function unarchiveCall(callId: string): Promise<ServiceResult<Call>
 
     const updatedCall = await call.save();
 
-    return { 
+    return {
         success: true,
-        data: mapCallDocumentToCall(updatedCall),
+        data: mapCallDocumentToCall(updatedCall)
     };
 }
 
@@ -167,15 +174,15 @@ export async function addNoteToCall(
         return {
             success: false,
             statusCode: 400,
-            error: "Invalid call ID format",
+            error: "Invalid call ID format"
         };
     }
-    
+
     if (!content || content.trim() === "") {
         return {
             success: false,
             statusCode: 400,
-            error: "Note content cannot be empty",
+            error: "Note content cannot be empty"
         };
     }
 
@@ -185,75 +192,81 @@ export async function addNoteToCall(
         return {
             success: false,
             statusCode: 404,
-            error: "Call not found",
+            error: "Call not found"
         };
     }
 
     call.notes.push({
-        content: content.trim(),
+        content: content.trim()
     } as never);
 
     const updatedCall = await call.save();
 
     return {
         success: true,
-        data: mapCallDocumentToCallWithNotes(updatedCall), 
+        data: mapCallDocumentToCallWithNotes(updatedCall)
     };
 }
 
-export async function deleteCall(callId: string): Promise<ServiceResult<{message: string}>> {
+export async function deleteCall(
+    callId: string
+): Promise<ServiceResult<{ message: string }>> {
     if (!isValidMongoObjectId(callId)) {
         return {
             success: false,
             statusCode: 400,
-            error: "Invalid call ID format",
+            error: "Invalid call ID format"
         };
     }
-    
+
     const deletedCall = await CallDbModel.findByIdAndDelete(callId);
 
     if (!deletedCall) {
         return {
             success: false,
             statusCode: 404,
-            error: "Call not found",
+            error: "Call not found"
         };
     }
 
     return {
         success: true,
         data: {
-            message: `Call ${callId} and associated notes deleted successfully`,
-        },
+            message: `Call ${callId} and associated notes deleted successfully`
+        }
     };
 }
 
-export async function archiveAllCalls(): Promise<ServiceResult<{ message: string; modifiedCount: number }>> {
-  const result = await CallDbModel.updateMany(
-    { is_archived: false },
-    { $set: { is_archived: true } }
-  );
+export async function archiveAllCalls(): Promise<
+    ServiceResult<{ message: string; modifiedCount: number }>
+> {
+    const result = await CallDbModel.updateMany(
+        { is_archived: false },
+        { $set: { is_archived: true } }
+    );
 
-  return {
-    success: true,
-    data: {
-      message: "All active calls archived successfully",
-      modifiedCount: result.modifiedCount,
-    },
-  };
+    return {
+        success: true,
+        data: {
+            message: "All active calls archived successfully",
+            modifiedCount: result.modifiedCount
+        }
+    };
 }
 
-export async function unarchiveAllCalls(): Promise<ServiceResult<{ message: string; modifiedCount: number }>> {
-  const result = await CallDbModel.updateMany(
-    { is_archived: true },
-    { $set: { is_archived: false } }
-  );
+export async function unarchiveAllCalls(): Promise<
+    ServiceResult<{ message: string; modifiedCount: number }>
+> {
+    const result = await CallDbModel.updateMany(
+        { is_archived: true },
+        { $set: { is_archived: false } }
+    );
 
-  return {
-    success: true,
-    data: {
-      message: "All archived calls unarchived successfully",
-      modifiedCount: result.modifiedCount,
-    },
-  };
+    return {
+        success: true,
+        data: {
+            message: "All archived calls unarchived successfully",
+            modifiedCount: result.modifiedCount
+        }
+    };
 }

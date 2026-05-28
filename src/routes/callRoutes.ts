@@ -7,8 +7,8 @@ import {
     addNoteToCallController,
     deleteCallController,
     archiveAllCallsController,
-    unarchiveAllCallsController,
-} from "../controllers/callControllers.js"
+    unarchiveAllCallsController
+} from "../controllers/callControllers.js";
 
 const router = Router();
 
@@ -25,6 +25,6 @@ router.patch("/:callId/unarchive", unarchiveCallController);
 
 router.post("/:callId/notes", addNoteToCallController);
 
-router.delete("/:callId", deleteCallController)
+router.delete("/:callId", deleteCallController);
 
 export default router;

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 export const connectToDatabase = async () => {
     const mongoUri = process.env.MONGODB_URI;
 
-    if(!mongoUri){
+    if (!mongoUri) {
         throw new Error("MONGODB_URI is missing from enviroment variables");
     }
 

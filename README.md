@@ -10,47 +10,47 @@ The API allows clients to manage call records, filter and paginate call lists, a
 
 ### Core Features
 
-* Get all calls
-* Get a single call by ID
-* Archive a call
-* Return clean JSON error responses
-* MongoDB Atlas database integration
-* Mongoose schema/model for calls
-* Seed script for sample data
-* Environment variable configuration
+- Get all calls
+- Get a single call by ID
+- Archive a call
+- Return clean JSON error responses
+- MongoDB Atlas database integration
+- Mongoose schema/model for calls
+- Seed script for sample data
+- Environment variable configuration
 
 ### Bonus / Extended Features
 
-* Unarchive a call
-* Archive all active calls
-* Unarchive all archived calls
-* Add notes to a call
-* Delete a call
-* Filter calls by:
+- Unarchive a call
+- Archive all active calls
+- Unarchive all archived calls
+- Add notes to a call
+- Delete a call
+- Filter calls by:
+    - archived status
+    - direction
+    - call type
 
-  * archived status
-  * direction
-  * call type
-* Pagination support for `GET /calls`
-* Request logging middleware
-* Centralized not-found handling
-* Centralized error handling
-* Health check endpoint
+- Pagination support for `GET /calls`
+- Request logging middleware
+- Centralized not-found handling
+- Centralized error handling
+- Health check endpoint
 
 ---
 
 ## Tech Stack
 
-| Technology                   | Why it is used                                       |
-| ---------------------------- | ---------------------------------------------------- |
-| Node.js                      | Runtime environment for the backend                  |
-| Express                      | Web framework for creating API routes and middleware |
-| TypeScript                   | Adds type safety and improves maintainability        |
-| MongoDB Atlas                | Cloud database used for persistent storage           |
-| Mongoose                     | ODM used to define schemas and interact with MongoDB |
-| dotenv                       | Loads environment variables from `.env`              |
-| cors                         | Allows the frontend to communicate with the backend  |
-| tsx                          | Runs TypeScript files during development             |
+| Technology    | Why it is used                                       |
+| ------------- | ---------------------------------------------------- |
+| Node.js       | Runtime environment for the backend                  |
+| Express       | Web framework for creating API routes and middleware |
+| TypeScript    | Adds type safety and improves maintainability        |
+| MongoDB Atlas | Cloud database used for persistent storage           |
+| Mongoose      | ODM used to define schemas and interact with MongoDB |
+| dotenv        | Loads environment variables from `.env`              |
+| cors          | Allows the frontend to communicate with the backend  |
+| tsx           | Runs TypeScript files during development             |
 
 ---
 
@@ -126,6 +126,7 @@ The connection string should look similar to this:
 ```txt
 mongodb+srv://USERNAME:PASSWORD@cluster-name.mongodb.net/call-center-db?appName=cluster-name
 ```
+
 Note: Do not use symbols in your USERNAME and PASSWORD in case of breaking the connection string.
 
 ---
@@ -263,26 +264,26 @@ GET /calls?direction=inbound&call_type=answered&page=1&limit=5
 
 ```json
 {
-  "calls": [
-    {
-      "id": "665f1f4e91a5b6a4d1c8b123",
-      "direction": "inbound",
-      "from": "+33612345678",
-      "to": "+33123456789",
-      "call_type": "answered",
-      "duration": 120,
-      "is_archived": false,
-      "created_at": "2025-04-10T14:32:00.000Z"
+    "calls": [
+        {
+            "id": "665f1f4e91a5b6a4d1c8b123",
+            "direction": "inbound",
+            "from": "+33612345678",
+            "to": "+33123456789",
+            "call_type": "answered",
+            "duration": 120,
+            "is_archived": false,
+            "created_at": "2025-04-10T14:32:00.000Z"
+        }
+    ],
+    "pagination": {
+        "page": 1,
+        "limit": 10,
+        "totalItems": 1,
+        "totalPages": 1,
+        "hasNextPage": false,
+        "hasPreviousPage": false
     }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "totalItems": 1,
-    "totalPages": 1,
-    "hasNextPage": false,
-    "hasPreviousPage": false
-  }
 }
 ```
 
@@ -300,20 +301,20 @@ GET /calls/:callId
 
 ```json
 {
-  "id": "665f1f4e91a5b6a4d1c8b123",
-  "direction": "inbound",
-  "from": "+33612345678",
-  "to": "+33123456789",
-  "call_type": "answered",
-  "duration": 120,
-  "is_archived": false,
-  "created_at": "2025-04-10T14:32:00.000Z",
-  "notes": [
-    {
-      "id": "665f1f4e91a5b6a4d1c8b456",
-      "content": "Customer asked about pricing plan"
-    }
-  ]
+    "id": "665f1f4e91a5b6a4d1c8b123",
+    "direction": "inbound",
+    "from": "+33612345678",
+    "to": "+33123456789",
+    "call_type": "answered",
+    "duration": 120,
+    "is_archived": false,
+    "created_at": "2025-04-10T14:32:00.000Z",
+    "notes": [
+        {
+            "id": "665f1f4e91a5b6a4d1c8b456",
+            "content": "Customer asked about pricing plan"
+        }
+    ]
 }
 ```
 
@@ -331,7 +332,7 @@ POST /calls/:callId/notes
 
 ```json
 {
-  "content": "Customer asked for a callback tomorrow"
+    "content": "Customer asked for a callback tomorrow"
 }
 ```
 
@@ -365,8 +366,8 @@ Example response:
 
 ```json
 {
-  "message": "All active calls archived successfully",
-  "modifiedCount": 2
+    "message": "All active calls archived successfully",
+    "modifiedCount": 2
 }
 ```
 
@@ -380,8 +381,8 @@ Example response:
 
 ```json
 {
-  "message": "All archived calls unarchived successfully",
-  "modifiedCount": 3
+    "message": "All archived calls unarchived successfully",
+    "modifiedCount": 3
 }
 ```
 
@@ -399,7 +400,7 @@ DELETE /calls/:callId
 
 ```json
 {
-  "message": "Call 665f1f4e91a5b6a4d1c8b123 deleted successfully"
+    "message": "Call 665f1f4e91a5b6a4d1c8b123 deleted successfully"
 }
 ```
 
@@ -413,7 +414,7 @@ The API returns JSON error responses.
 
 ```json
 {
-  "error": "Invalid call ID format"
+    "error": "Invalid call ID format"
 }
 ```
 
@@ -421,7 +422,7 @@ The API returns JSON error responses.
 
 ```json
 {
-  "error": "Call not found"
+    "error": "Call not found"
 }
 ```
 
@@ -429,7 +430,7 @@ The API returns JSON error responses.
 
 ```json
 {
-  "error": "Invalid direction filter. Expected 'inbound' or 'outbound'."
+    "error": "Invalid direction filter. Expected 'inbound' or 'outbound'."
 }
 ```
 
@@ -437,7 +438,7 @@ The API returns JSON error responses.
 
 ```json
 {
-  "error": "Route not found: PATCH /unknown-route"
+    "error": "Route not found: PATCH /unknown-route"
 }
 ```
 
@@ -445,7 +446,7 @@ The API returns JSON error responses.
 
 ```json
 {
-  "error": "Internal server error"
+    "error": "Internal server error"
 }
 ```
 
@@ -465,25 +466,25 @@ The API maps MongoDB `_id` fields to `id` in responses so clients do not need to
 
 If I had more time, I would improve the project by adding:
 
-* Authentication and authorization
-* Unit and integration tests
-* Better request validation using a library such as Zod or Joi
-* More advanced logging
-* Rate limiting
-* API documentation with Swagger/OpenAPI
-* Deployment configuration
-* Separate environments for development, testing, and production
-* More detailed pagination metadata if needed by the frontend
-* Search by phone number or note content
-* Update/edit note functionality
-* Delete note functionality
+- Authentication and authorization
+- Unit and integration tests
+- Better request validation using a library such as Zod or Joi
+- More advanced logging
+- Rate limiting
+- API documentation with Swagger/OpenAPI
+- Deployment configuration
+- Separate environments for development, testing, and production
+- More detailed pagination metadata if needed by the frontend
+- Search by phone number or note content
+- Update/edit note functionality
+- Delete note functionality
 
 ---
 
 ## Development Notes
 
-* Empty filter results return `200 OK` with an empty `calls` array.
-* Invalid filters return `400 Bad Request`.
-* `GET /calls` returns only unarchived calls by default.
-* Use `npm run seed` to reset and restore sample data.
-* The `.env` file must never be committed to GitHub.
+- Empty filter results return `200 OK` with an empty `calls` array.
+- Invalid filters return `400 Bad Request`.
+- `GET /calls` returns only unarchived calls by default.
+- Use `npm run seed` to reset and restore sample data.
+- The `.env` file must never be committed to GitHub.

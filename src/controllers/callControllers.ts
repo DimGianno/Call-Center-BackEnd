@@ -1,13 +1,13 @@
 import type { Request, Response } from "express";
-import { 
+import {
     getAllCalls,
-    getCallById, 
+    getCallById,
     archiveCall,
     unarchiveCall,
     addNoteToCall,
     deleteCall,
     archiveAllCalls,
-    unarchiveAllCalls,
+    unarchiveAllCalls
 } from "../services/callService.js";
 import type { CallFilters } from "../models/callModel.js";
 
@@ -18,14 +18,14 @@ export const getAllCallsController = async (req: Request, res: Response) => {
 
     if (isArchived !== undefined) {
         if (isArchived === "true") {
-        filters.is_archived = true;
+            filters.is_archived = true;
         } else if (isArchived === "false") {
-        filters.is_archived = false;
+            filters.is_archived = false;
         } else {
-        res.status(400).json({
-            error: "Invalid is_archived filter. Expected 'true' or 'false'.",
-        });
-        return;
+            res.status(400).json({
+                error: "Invalid is_archived filter. Expected 'true' or 'false'."
+            });
+            return;
         }
     }
 
@@ -33,12 +33,12 @@ export const getAllCallsController = async (req: Request, res: Response) => {
 
     if (direction !== undefined) {
         if (direction === "inbound" || direction === "outbound") {
-        filters.direction = direction;
+            filters.direction = direction;
         } else {
-        res.status(400).json({
-            error: "Invalid direction filter. Expected 'inbound' or 'outbound'.",
-        });
-        return;
+            res.status(400).json({
+                error: "Invalid direction filter. Expected 'inbound' or 'outbound'."
+            });
+            return;
         }
     }
 
@@ -46,17 +46,16 @@ export const getAllCallsController = async (req: Request, res: Response) => {
 
     if (callType !== undefined) {
         if (
-        callType === "answered" ||
-        callType === "missed" ||
-        callType === "voicemail"
+            callType === "answered" ||
+            callType === "missed" ||
+            callType === "voicemail"
         ) {
-        filters.call_type = callType;
+            filters.call_type = callType;
         } else {
-        res.status(400).json({
-            error:
-            "Invalid call_type filter. Expected 'answered', 'missed', or 'voicemail'.",
-        });
-        return;
+            res.status(400).json({
+                error: "Invalid call_type filter. Expected 'answered', 'missed', or 'voicemail'."
+            });
+            return;
         }
     }
 
@@ -64,37 +63,37 @@ export const getAllCallsController = async (req: Request, res: Response) => {
     const limitQuery = req.query.limit;
 
     const page =
-    typeof pageQuery === "string" ? Number.parseInt(pageQuery, 10) : 1;
+        typeof pageQuery === "string" ? Number.parseInt(pageQuery, 10) : 1;
 
     const limit =
-    typeof limitQuery === "string" ? Number.parseInt(limitQuery, 10) : 10;
+        typeof limitQuery === "string" ? Number.parseInt(limitQuery, 10) : 10;
 
     if (!Number.isInteger(page) || page < 1) {
-    res.status(400).json({
-        error: "Invalid page. Expected a positive integer.",
-    });
-    return;
+        res.status(400).json({
+            error: "Invalid page. Expected a positive integer."
+        });
+        return;
     }
 
     if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
-    res.status(400).json({
-        error: "Invalid limit. Expected a positive integer between 1 and 50.",
-    });
-    return;
+        res.status(400).json({
+            error: "Invalid limit. Expected a positive integer between 1 and 50."
+        });
+        return;
     }
 
     const result = await getAllCalls(filters, { page, limit });
 
     if (!result.success) {
-    res.status(result.statusCode).json({
-        error: result.error,
-    });
-    return;
+        res.status(result.statusCode).json({
+            error: result.error
+        });
+        return;
     }
 
     res.status(200).json({
-    calls: result.data.items,
-    pagination: result.data.pagination,
+        calls: result.data.items,
+        pagination: result.data.pagination
     });
 };
 
@@ -103,7 +102,7 @@ export const getCallByIdController = async (req: Request, res: Response) => {
 
     if (!callId || typeof callId !== "string") {
         res.status(400).json({
-            error: "Call ID is required and must be a string",
+            error: "Call ID is required and must be a string"
         });
         return;
     }
@@ -112,7 +111,7 @@ export const getCallByIdController = async (req: Request, res: Response) => {
 
     if (!result.success) {
         res.status(result.statusCode).json({
-            error: result.error,
+            error: result.error
         });
         return;
     }
@@ -125,7 +124,7 @@ export const archiveCallController = async (req: Request, res: Response) => {
 
     if (!callId || typeof callId !== "string") {
         res.status(400).json({
-            error: "Call ID is required and must be a string",
+            error: "Call ID is required and must be a string"
         });
         return;
     }
@@ -134,7 +133,7 @@ export const archiveCallController = async (req: Request, res: Response) => {
 
     if (!result.success) {
         res.status(result.statusCode).json({
-            error: result.error,
+            error: result.error
         });
         return;
     }
@@ -147,7 +146,7 @@ export const unarchiveCallController = async (req: Request, res: Response) => {
 
     if (!callId || typeof callId !== "string") {
         res.status(400).json({
-            error: "Call ID is required and must be a string",
+            error: "Call ID is required and must be a string"
         });
         return;
     }
@@ -156,7 +155,7 @@ export const unarchiveCallController = async (req: Request, res: Response) => {
 
     if (!result.success) {
         res.status(result.statusCode).json({
-            error: result.error,
+            error: result.error
         });
         return;
     }
@@ -164,81 +163,87 @@ export const unarchiveCallController = async (req: Request, res: Response) => {
     res.status(200).json(result.data);
 };
 
-export const addNoteToCallController = async ( req: Request, res: Response) => {
-  const callId = req.params.callId;
+export const addNoteToCallController = async (req: Request, res: Response) => {
+    const callId = req.params.callId;
 
-  if (!callId || typeof callId !== "string") {
-    res.status(400).json({
-      error: "Call ID is required and must be a string",
-    });
-    return;
-  }
+    if (!callId || typeof callId !== "string") {
+        res.status(400).json({
+            error: "Call ID is required and must be a string"
+        });
+        return;
+    }
 
-  const content = req.body.content;
+    const content = req.body.content;
 
-  if (typeof content !== "string") {
-    res.status(400).json({
-      error: "Note content is required and must be a string",
-    });
-    return;
-  }
+    if (typeof content !== "string") {
+        res.status(400).json({
+            error: "Note content is required and must be a string"
+        });
+        return;
+    }
 
-  const result = await addNoteToCall(callId, content);
+    const result = await addNoteToCall(callId, content);
 
-  if (!result.success) {
-    res.status(result.statusCode).json({
-      error: result.error,
-    });
-    return;
-  }
+    if (!result.success) {
+        res.status(result.statusCode).json({
+            error: result.error
+        });
+        return;
+    }
 
-  res.status(201).json(result.data);
+    res.status(201).json(result.data);
 };
 
 export const deleteCallController = async (req: Request, res: Response) => {
     const callId = req.params.callId;
 
     if (!callId || typeof callId !== "string") {
-    res.status(400).json({
-        error: "Call ID is required and must be a string",
-    });
-    return;
+        res.status(400).json({
+            error: "Call ID is required and must be a string"
+        });
+        return;
     }
 
     const result = await deleteCall(callId);
 
     if (!result.success) {
-    res.status(result.statusCode).json({
-        error: result.error,
-    });
-    return;
+        res.status(result.statusCode).json({
+            error: result.error
+        });
+        return;
     }
 
     res.status(200).json(result.data);
 };
 
-export const archiveAllCallsController = async (_req: Request, res: Response) => {
-  const result = await archiveAllCalls();
+export const archiveAllCallsController = async (
+    _req: Request,
+    res: Response
+) => {
+    const result = await archiveAllCalls();
 
-  if (!result.success) {
-    res.status(result.statusCode).json({
-      error: result.error,
-    });
-    return;
-  }
+    if (!result.success) {
+        res.status(result.statusCode).json({
+            error: result.error
+        });
+        return;
+    }
 
-  res.status(200).json(result.data);
+    res.status(200).json(result.data);
 };
 
-export const unarchiveAllCallsController = async ( _req: Request, res: Response) => {
-  const result = await unarchiveAllCalls();
+export const unarchiveAllCallsController = async (
+    _req: Request,
+    res: Response
+) => {
+    const result = await unarchiveAllCalls();
 
-  if (!result.success) {
-    res.status(result.statusCode).json({
-      error: result.error,
-    });
-    return;
-  }
+    if (!result.success) {
+        res.status(result.statusCode).json({
+            error: result.error
+        });
+        return;
+    }
 
-  res.status(200).json(result.data);
+    res.status(200).json(result.data);
 };
