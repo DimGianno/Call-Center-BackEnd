@@ -1,8 +1,11 @@
 import mongoose, { Schema } from "mongoose";
 
-export type NoteDocument = {
-    _id: mongoose.Types.ObjectId;
+export type NoteInput = {
     content: string;
+};
+
+export type NoteDocument = NoteInput & {
+    _id: mongoose.Types.ObjectId;
 };
 
 export type CallDocument = {
@@ -17,7 +20,7 @@ export type CallDocument = {
     notes: NoteDocument[];
 };
 
-const noteSchema = new Schema<NoteDocument>(
+const noteSchema = new Schema<NoteInput>(
     {
         content: {
             type: String,

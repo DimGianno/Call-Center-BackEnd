@@ -13,6 +13,7 @@ import {
     mapCallDocumentToCall,
     mapCallDocumentToCallWithNotes
 } from "../mappers/callMapper.js";
+import { Types } from "mongoose";
 
 export async function getAllCalls(
     filters: CallFilters = {},
@@ -197,8 +198,9 @@ export async function addNoteToCall(
     }
 
     call.notes.push({
-        content: content.trim()
-    } as never);
+        _id: new Types.ObjectId(),
+        content: content.trim(),
+    });
 
     const updatedCall = await call.save();
 
