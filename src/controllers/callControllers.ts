@@ -7,11 +7,59 @@ import {
     addNoteToCall,
     deleteCall,
 } from "../services/callService.js";
-import { error } from "node:console";
+import type { CallFilters } from "../models/callModel.js";
 
-export const getAllCallsController = async (_req: Request, res: Response) => {
-    const result = await getAllCalls();
-    
+export const getAllCallsController = async (req: Request, res: Response) => {
+    const filters: CallFilters = {};
+
+    const isArchived = req.query.is_archived;
+
+    if (isArchived !== undefined) {
+        if (isArchived === "true") {
+        filters.is_archived = true;
+        } else if (isArchived === "false") {
+        filters.is_archived = false;
+        } else {
+        res.status(400).json({
+            error: "Invalid is_archived filter. Expected 'true' or 'false'.",
+        });
+        return;
+        }
+    }
+
+    const direction = req.query.direction;
+
+    if (direction !== undefined) {
+        if (direction === "inbound" || direction === "outbound") {
+        filters.direction = direction;
+        } else {
+        res.status(400).json({
+            error: "Invalid direction filter. Expected 'inbound' or 'outbound'.",
+        });
+        return;
+        }
+    }
+
+    const callType = req.query.call_type;
+
+    if (callType !== undefined) {
+        if (
+        callType === "answered" ||
+        callType === "missed" ||
+        callType === "voicemail"
+        ) {
+        filters.call_type = callType;
+        } else {
+        res.status(400).json({
+            error:
+            "Invalid call_type filter. Expected 'answered', 'missed', or 'voicemail'.",
+        });
+        return;
+        }
+    }
+
+    const result = await getAllCalls(filters);
+
     if (!result.success) {
         res.status(result.statusCode).json({
             error: result.error,
