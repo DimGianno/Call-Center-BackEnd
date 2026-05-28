@@ -6,6 +6,7 @@ import app from "../app.js";
 import { CallDbModel } from "../db/models/callDbModel.js"
 
 let mongoServer: MongoMemoryServer;
+let seededCalls: Awaited<ReturnType<typeof CallDbModel.create>>;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -16,7 +17,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await CallDbModel.deleteMany({});
 
-  await CallDbModel.create([
+  seededCalls = await CallDbModel.create([
     {
       direction: "inbound",
       from: "+306900000001",
@@ -56,5 +57,20 @@ describe("GET /calls", () => {
     expect(response.status).toBe(200);
     expect(response.body.calls).toBeInstanceOf(Array);
     expect(response.body.calls.length).toBe(2);
+  });
+});
+
+describe("GET /calls/:callId", () => {
+  test("returns the correct call with its notes", async () => {
+    const callId = seededCalls[0]._id.toString();
+
+    const response = await request(app).get(`/calls/${callId}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.id).toBe(callId);
+    expect(response.body.direction).toBe("inbound");
+    expect(response.body.notes).toBeInstanceOf(Array);
+    expect(response.body.notes.length).toBe(1);
+    expect(response.body.notes[0].content).toBe("Customer asked about billing.");
   });
 });

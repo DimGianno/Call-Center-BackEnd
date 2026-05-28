@@ -1,8 +1,6 @@
 import { createDefaultEsmPreset } from "ts-jest";
 
-const presetConfig = createDefaultEsmPreset({
-  isolatedModules: true,
-});
+const presetConfig = createDefaultEsmPreset();
 
 /** @type {import("jest").Config} */
 export default {
