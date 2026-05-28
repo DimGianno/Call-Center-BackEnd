@@ -1,4 +1,9 @@
+import mongoose from "mongoose";
 import type { Call } from "../models/callModel.js";
+
+export const isValidMongoObjectId = (id: string): boolean => {
+    return mongoose.Types.ObjectId.isValid(id);
+};
 
 const VALID_DIRECTIONS = ["inbound", "outbound"] as const;
 const VALID_CALL_TYPES = ["answered", "missed", "voicemail"] as const;

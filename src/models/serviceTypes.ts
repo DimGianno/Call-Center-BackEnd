@@ -1,16 +1,42 @@
 import type { Call } from "./callModel.js";
-import type { Note } from "./noteModel.js";
+
+export type ServiceSuccess<T> = {
+    success: true;
+    data: T;
+};
 
 export type ServiceError = {
+    success: false;
+    statusCode: number;
     error: string;
 };
 
-export type ServiceSuccess = {
-    message: string;
+export type ServiceResult<T> = ServiceSuccess<T> | ServiceError;
+
+export type NoteResponse = {
+    id: string;
+    content: string;
 };
 
-export type CommandResult = ServiceSuccess | ServiceError;
-
 export type CallWithNotes = Call & {
-    notes: Note[];
+    notes: NoteResponse[];
+};
+
+export type PaginationOptions = {
+    page: number;
+    limit: number;
+};
+
+export type PaginationMeta = {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+};
+
+export type PaginatedResult<T> = {
+    items: T[];
+    pagination: PaginationMeta;
 };
