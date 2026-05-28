@@ -60,17 +60,41 @@ export const getAllCallsController = async (req: Request, res: Response) => {
         }
     }
 
-    const result = await getAllCalls(filters);
+    const pageQuery = req.query.page;
+    const limitQuery = req.query.limit;
+
+    const page =
+    typeof pageQuery === "string" ? Number.parseInt(pageQuery, 10) : 1;
+
+    const limit =
+    typeof limitQuery === "string" ? Number.parseInt(limitQuery, 10) : 10;
+
+    if (!Number.isInteger(page) || page < 1) {
+    res.status(400).json({
+        error: "Invalid page. Expected a positive integer.",
+    });
+    return;
+    }
+
+    if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+    res.status(400).json({
+        error: "Invalid limit. Expected a positive integer between 1 and 50.",
+    });
+    return;
+    }
+
+    const result = await getAllCalls(filters, { page, limit });
 
     if (!result.success) {
-        res.status(result.statusCode).json({
-            error: result.error,
-        });
-        return;
+    res.status(result.statusCode).json({
+        error: result.error,
+    });
+    return;
     }
 
     res.status(200).json({
-        calls: result.data,
+    calls: result.data.items,
+    pagination: result.data.pagination,
     });
 };
 

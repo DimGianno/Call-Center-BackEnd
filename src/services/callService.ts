@@ -1,6 +1,8 @@
 import type { Call, CallFilters } from "../models/callModel.js";
 import type {
     CallWithNotes,
+    PaginatedResult,
+    PaginationOptions,
     ServiceResult,
 } from "../models/serviceTypes.js";
 
@@ -14,7 +16,7 @@ import {
 
 
 
-export async function getAllCalls(filters: CallFilters = {}): Promise<ServiceResult<Call[]>> {
+export async function getAllCalls(filters: CallFilters = {}, paginationOptions: PaginationOptions = { page: 1, limit: 10 }): Promise<ServiceResult<PaginatedResult<Call>>> {
     const query: Partial<CallFilters> = {};
 
     if (typeof filters.is_archived === "boolean") {
@@ -31,11 +33,32 @@ export async function getAllCalls(filters: CallFilters = {}): Promise<ServiceRes
         query.call_type = filters.call_type;
     }
 
-    const calls = await CallDbModel.find(query).sort({ created_at: -1});
+    const { page, limit } = paginationOptions;
+    const skip = (page - 1) * limit;
+
+    const [ calls, totalItems ] = await Promise.all([
+        CallDbModel.find(query)
+            .sort({ created_at: -1})
+            .skip(skip)
+            .limit(limit),
+           CallDbModel.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
 
     return {
         success: true,
-        data: calls.map(mapCallDocumentToCall),
+        data: {
+            items: calls.map(mapCallDocumentToCall),
+            pagination: {
+                page,
+                limit,
+                totalItems,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        },
     };
 }
 
