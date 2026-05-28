@@ -6,11 +6,16 @@ import {
     unarchiveCallController,
     addNoteToCallController,
     deleteCallController,
+    archiveAllCallsController,
+    unarchiveAllCallsController,
 } from "../controllers/callControllers.js"
 
 const router = Router();
 
 router.get("/", getAllCallsController);
+
+router.patch("/archive-all", archiveAllCallsController);
+router.patch("/unarchive-all", unarchiveAllCallsController);
 
 router.get("/:callId", getCallByIdController);
 

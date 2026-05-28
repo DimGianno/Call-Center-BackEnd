@@ -6,6 +6,8 @@ import {
     unarchiveCall,
     addNoteToCall,
     deleteCall,
+    archiveAllCalls,
+    unarchiveAllCalls,
 } from "../services/callService.js";
 import type { CallFilters } from "../models/callModel.js";
 
@@ -138,10 +140,7 @@ export const unarchiveCallController = async (req: Request, res: Response) => {
     res.status(200).json(result.data);
 };
 
-export const addNoteToCallController = async (
-  req: Request,
-  res: Response
-) => {
+export const addNoteToCallController = async ( req: Request, res: Response) => {
   const callId = req.params.callId;
 
   if (!callId || typeof callId !== "string") {
@@ -192,4 +191,30 @@ export const deleteCallController = async (req: Request, res: Response) => {
     }
 
     res.status(200).json(result.data);
+};
+
+export const archiveAllCallsController = async (_req: Request, res: Response) => {
+  const result = await archiveAllCalls();
+
+  if (!result.success) {
+    res.status(result.statusCode).json({
+      error: result.error,
+    });
+    return;
+  }
+
+  res.status(200).json(result.data);
+};
+
+export const unarchiveAllCallsController = async ( _req: Request, res: Response) => {
+  const result = await unarchiveAllCalls();
+
+  if (!result.success) {
+    res.status(result.statusCode).json({
+      error: result.error,
+    });
+    return;
+  }
+
+  res.status(200).json(result.data);
 };

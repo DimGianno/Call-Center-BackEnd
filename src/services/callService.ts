@@ -217,3 +217,33 @@ export async function deleteCall(callId: string): Promise<ServiceResult<{message
         },
     };
 }
+
+export async function archiveAllCalls(): Promise<ServiceResult<{ message: string; modifiedCount: number }>> {
+  const result = await CallDbModel.updateMany(
+    { is_archived: false },
+    { $set: { is_archived: true } }
+  );
+
+  return {
+    success: true,
+    data: {
+      message: "All active calls archived successfully",
+      modifiedCount: result.modifiedCount,
+    },
+  };
+}
+
+export async function unarchiveAllCalls(): Promise<ServiceResult<{ message: string; modifiedCount: number }>> {
+  const result = await CallDbModel.updateMany(
+    { is_archived: true },
+    { $set: { is_archived: false } }
+  );
+
+  return {
+    success: true,
+    data: {
+      message: "All archived calls unarchived successfully",
+      modifiedCount: result.modifiedCount,
+    },
+  };
+}
