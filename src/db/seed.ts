@@ -4,46 +4,71 @@ import { CallDbModel } from "./models/callDbModel.js";
 
 dotenv.config();
 
-const seedCalls = [
-  {
-    direction: "inbound",
-    from: "+33612345678",
-    to: "+33123456789",
-    call_type: "answered",
-    duration: 120,
-    is_archived: false,
-    created_at: new Date("2025-04-10T14:32:00Z"),
-    notes: [
-      {
-        content: "Customer asked about pricing plan",
-      },
-    ],
-  },
-  {
-    direction: "outbound",
-    from: "+33123456789",
-    to: "+33687654321",
-    call_type: "missed",
-    duration: 0,
-    is_archived: false,
-    created_at: new Date("2025-04-11T09:15:00Z"),
-    notes: [],
-  },
-  {
-    direction: "inbound",
-    from: "+33655554444",
-    to: "+33123456789",
-    call_type: "voicemail",
-    duration: 45,
-    is_archived: true,
-    created_at: new Date("2025-04-12T17:05:00Z"),
-    notes: [
-      {
-        content: "Customer left voicemail about account access",
-      },
-    ],
-  },
+const directions = ["inbound", "outbound"] as const;
+const callTypes = ["answered", "missed", "voicemail"] as const;
+
+const noteTemplates = [
+  "Customer asked about pricing plan",
+  "Customer requested a callback",
+  "Customer reported an account access issue",
+  "Customer asked for billing clarification",
+  "Customer wanted more information about available services",
+  "Customer asked to update contact details",
+  "Customer requested technical support",
+  "Customer asked about cancellation policy",
+  "Customer wanted to speak with a supervisor",
+  "Customer left a follow-up question",
 ];
+
+const generatePhoneNumber = (index: number): string => {
+  const baseNumber = 600000000 + index;
+  return `+33${baseNumber}`;
+};
+
+const generateNotes = (callIndex: number) => {
+  const noteCount = callIndex % 4; // 0 to 3 notes
+
+  return Array.from({ length: noteCount }, (_, noteIndex) => ({
+    content: noteTemplates[(callIndex + noteIndex) % noteTemplates.length],
+  }));
+};
+
+const generateMockCalls = (count: number) => {
+  return Array.from({ length: count }, (_, index) => {
+    const callNumber = index + 1;
+    const direction = directions[index % directions.length];
+    const call_type = callTypes[index % callTypes.length];
+
+    return {
+      direction,
+      from:
+        direction === "inbound"
+          ? generatePhoneNumber(callNumber)
+          : "+33123456789",
+      to:
+        direction === "inbound"
+          ? "+33123456789"
+          : generatePhoneNumber(callNumber),
+      call_type,
+      duration:
+        call_type === "missed"
+          ? 0
+          : 30 + ((callNumber * 17) % 420),
+      is_archived: callNumber % 5 === 0,
+      created_at: new Date(
+        Date.UTC(
+          2025,
+          3,
+          1 + (index % 28),
+          8 + (index % 10),
+          (index * 7) % 60,
+          0
+        )
+      ),
+      notes: generateNotes(callNumber),
+    };
+  });
+};
 
 const runSeed = async () => {
   const mongoUri = process.env.MONGODB_URI;
@@ -55,10 +80,12 @@ const runSeed = async () => {
   try {
     await mongoose.connect(mongoUri);
 
-    await CallDbModel.deleteMany({});
-    await CallDbModel.insertMany(seedCalls);
+    const mockCalls = generateMockCalls(150);
 
-    console.log(`Seeded ${seedCalls.length} calls successfully`);
+    await CallDbModel.deleteMany({});
+    await CallDbModel.insertMany(mockCalls);
+
+    console.log(`Seeded ${mockCalls.length} calls successfully`);
   } catch (error) {
     console.error("Failed to seed database", error);
     process.exitCode = 1;
