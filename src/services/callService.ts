@@ -1,16 +1,3 @@
-import {
-    findAllCalls,
-    findCallById,
-    updateCall,
-    deleteCallById
-} from "../repositories/callRepository.js";
-
-import {
-    findNotesByCallId,
-    createNote,
-    deleteNotesByCallId
-} from "../repositories/noteRepository.js";
-
 import type { Call, CallFilters } from "../models/callModel.js";
 import type {
     CallWithNotes,
