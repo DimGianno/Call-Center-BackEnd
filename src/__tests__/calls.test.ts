@@ -335,7 +335,9 @@ describe("POST /calls/:callId/notes", () => {
   });
 
   test("returns 400 for an empty note", async () => {
-    const response = await request(app).post("/calls/999/notes").send({
+    const callId = seededCalls[1]._id.toString();
+
+    const response = await request(app).post(`/calls/${callId}/notes`).send({
       content: " ",
     });
 
