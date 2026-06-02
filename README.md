@@ -58,6 +58,10 @@ This project was built as part of a backend engineering learning assignment, wit
 | Supertest         | Tests Express endpoint without manually starting the server |
 | MongoMemoryServer | Temporary in-memory MongoDB for tests                       |
 | GitHub Actions    | Runs automated build and test checks on push                |
+| Swagger / OpenAPI | Interactive API documentation available at /api-docs        |
+| Docker            | Containerizes the backend application                       |
+| ESLint            | Checks code quality and catches common issues               |
+| Prettier          | Enforces consistent code formatting                         |
 
 ---
 
@@ -70,6 +74,7 @@ src/
 
   config/
     db.ts
+    swagger.ts
 
   controllers/
     callControllers.ts
@@ -205,14 +210,19 @@ npm run start
 
 ## Available Scripts
 
-| Script               | Description                                 |
-| -------------------- | ------------------------------------------- |
-| `npm run dev`        | Starts the development server               |
-| `npm run build`      | Compiles TypeScript into JavaScript         |
-| `npm run start`      | Runs the compiled app from `dist`           |
-| `npm run seed`       | Seeds MongoDB with sample call data         |
-| `npm test`           | Runs the Jest/SuperTest API test suite      |
-| `npm run test:watch` | Runs tests in watch mode during development |
+| Script                 | Description                                                     |
+| ---------------------- | --------------------------------------------------------------- |
+| `npm run dev`          | Starts the development server                                   |
+| `npm run build`        | Compiles TypeScript into JavaScript                             |
+| `npm run start`        | Runs the compiled app from `dist`                               |
+| `npm run seed`         | Seeds MongoDB with sample call data                             |
+| `npm run typecheck`    | Runs TypeScript type-checking                                   |
+| `npm run lint`         | Runs ESLint on the src folder                                   |
+| `npm run format`       | Formats the project with Prettier                               |
+| `npm run format:check` | Checks if files follow Prettier formatting                      |
+| `npm test`             | Runs the Jest/SuperTest API test suite                          |
+| `npm run test:watch`   | Runs tests in watch mode during development                     |
+| `npm run check`        | Runs formatting check, linting, type-checking, build, and tests |
 
 ---
 
@@ -497,6 +507,27 @@ The test suite uses an in-memory MongoDB instance, so tests do not modify the de
 
 ---
 
+## API Documentation
+
+The project includes interactive API documentation using Swagger/OpenAPI.
+
+After starting the development server, open:
+
+http://localhost:3000/api-docs
+
+The Swagger page documents the main API endpoints, including:
+
+- GET /calls
+- GET /calls/:callId
+- PATCH /calls/:callId/archive
+- PATCH /calls/:callId/unarchive
+- PATCH /calls/archive-all
+- PATCH /calls/unarchive-all
+- POST /calls/:callId/notes
+- DELETE /calls/:callId
+
+---
+
 ## CI/CD
 
 This project uses GitHub Actions for continuous integration.
@@ -507,11 +538,45 @@ The workflow runs:
 
 ```bash
 npm ci
+npm run format:check
+npm run lint
+npm run typecheck
 npm run build
-npm test
+npm test docker build -t call-center-backend .
 ```
 
 The project is currently tested in CI using Node.js 24.
+
+A GitHub ruleset is also configured so the protected branch requires CI checks to pass before merging.
+
+---
+
+## Docker
+
+The project includes Docker support.
+
+Files added:
+
+Dockerfile
+.dockerignore
+
+The Docker image builds the TypeScript project and runs the compiled backend from dist.
+
+To build the image locally:
+
+```bash
+docker build -t call-center-backend .
+```
+
+To run the container locally:
+
+```bash
+docker run --env-file .env -p 3000:3000 call-center-backend
+```
+
+The .env file is not copied into the Docker image. Environment variables such as MONGODB_URI are passed at runtime.
+
+Note: Running Docker locally requires Docker Desktop or another Docker-compatible runtime.
 
 ---
 
@@ -533,7 +598,6 @@ If I had more time, I would improve the project by adding:
 - Better request validation using a library such as Zod or Joi
 - More advanced logging
 - Rate limiting
-- API documentation with Swagger/OpenAPI
 - Deployment configuration
 - Separate environments for development and production
 - Search by phone number or note content
