@@ -6,6 +6,7 @@ The API allows clients to manage call records, filter and paginate call lists, a
 
 This project was built as part of a backend engineering learning assignment, with focus on REST API design, validation, error handling, persistent storage, testing, and CI/CD.
 
+
 ## Features Implemented
 
 ### Core Features
