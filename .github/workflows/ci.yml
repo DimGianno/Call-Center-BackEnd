@@ -36,3 +36,7 @@ jobs:
 
             - name: Run tests
               run: npm test
+
+            - name: Build and push Docker image
+              run: docker build -t call-center-backend .
+              
