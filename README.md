@@ -530,7 +530,9 @@ The Swagger page documents the main API endpoints, including:
 
 ## CI/CD
 
-This project uses GitHub Actions for continuous integration.
+This project uses GitHub Actions for continuous integration and Render for continuous deployment.
+
+## Continuous Integration
 
 The CI workflow runs automatically on push and pull requests. It checks that the project can be installed, built, and tested successfully.
 
@@ -542,12 +544,43 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm run build
-npm test docker build -t call-center-backend .
+npm test 
+docker build -t call-center-backend .
 ```
 
 The project is currently tested in CI using Node.js 24.
 
 A GitHub ruleset is also configured so the protected branch requires CI checks to pass before merging.
+
+## Continuous Deployment
+
+The backend API is deployed on Render as a Web Service.
+
+Render is connected to the GitHub repository and automatically redeploys the service when changes are pushed to the configured deployment branch.
+
+Render uses the following commands:
+
+```bash
+npm ci --include=dev && npm run build
+npm run start
+```
+
+The deployed service uses environment variables configured in Render, including:
+
+```json
+NODE_VERSION=24
+MONGODB_URI=<MongoDB Atlas connection string>
+```
+
+The .env file is not committed to GitHub. Production environment variables are managed through Render’s dashboard.
+
+The deployed API includes:
+
+```http
+GET /health
+GET /api-docs
+GET /calls
+```
 
 ---
 
@@ -598,7 +631,6 @@ If I had more time, I would improve the project by adding:
 - Better request validation using a library such as Zod or Joi
 - More advanced logging
 - Rate limiting
-- Deployment configuration
 - Separate environments for development and production
 - Search by phone number or note content
 - Update/edit note functionality
