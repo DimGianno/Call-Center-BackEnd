@@ -4,13 +4,15 @@ A backend API for a call center application built with **Node.js**, **Express**,
 
 The API allows clients to manage call records, filter and paginate call lists, archive/unarchive calls, add notes to calls, delete calls, and seed sample data into the database.
 
+This project was built as part of a backend engineering learning assignment, with focus on REST API design, validation, error handling, persistent storage, testing, and CI/CD.
 ---
 
 ## Features Implemented
 
 ### Core Features
 
-- Get all calls
+- Get all active calls
+- Get all archived calls
 - Get a single call by ID
 - Archive a call
 - Return clean JSON error responses
@@ -36,21 +38,27 @@ The API allows clients to manage call records, filter and paginate call lists, a
 - Centralized not-found handling
 - Centralized error handling
 - Health check endpoint
+- Automated API tests
+- GitHub Actions CI workflow
 
 ---
 
 ## Tech Stack
 
-| Technology    | Why it is used                                       |
-| ------------- | ---------------------------------------------------- |
-| Node.js       | Runtime environment for the backend                  |
-| Express       | Web framework for creating API routes and middleware |
-| TypeScript    | Adds type safety and improves maintainability        |
-| MongoDB Atlas | Cloud database used for persistent storage           |
-| Mongoose      | ODM used to define schemas and interact with MongoDB |
-| dotenv        | Loads environment variables from `.env`              |
-| cors          | Allows the frontend to communicate with the backend  |
-| tsx           | Runs TypeScript files during development             |
+| Technology        | Why it is used                                              |
+| ----------------- | ----------------------------------------------------------- |
+| Node.js           | Runtime environment for the backend                         |
+| Express           | Web framework for creating API routes and middleware        |
+| TypeScript        | Adds type safety and improves maintainability               |
+| MongoDB Atlas     | Cloud database used for persistent storage                  |
+| Mongoose          | ODM used to define schemas and interact with MongoDB        |
+| dotenv            | Loads environment variables from `.env`                     |
+| cors              | Allows the frontend to communicate with the backend         |
+| tsx               | Runs TypeScript files during development                    |
+| Jest              | Test Runner                                                 |
+| Supertest         | Tests Express endpoint without manually starting the server |
+| MongoMemoryServer | Temporary in-memory MongoDB for tests                       |
+| GitHub Actions    | Runs automated build and test checks on push                |
 
 ---
 
@@ -92,6 +100,9 @@ src/
 
   utils/
     validators.ts
+
+  __tests__/
+    calls.tests.ts
 ```
 
 ---
@@ -101,8 +112,8 @@ src/
 ### 1. Clone the repository
 
 ```bash
-git clone <https://github.com/DimGianno/Call-Center-BackEnd.git>
-cd <your-project-folder>
+git clone https://github.com/DimGianno/Call-Center-BackEnd.git
+cd Call-Center-BackEnd
 ```
 
 ---
@@ -195,12 +206,14 @@ npm run start
 
 ## Available Scripts
 
-| Script          | Description                         |
-| --------------- | ----------------------------------- |
-| `npm run dev`   | Starts the development server       |
-| `npm run build` | Compiles TypeScript into JavaScript |
-| `npm run start` | Runs the compiled app from `dist`   |
-| `npm run seed`  | Seeds MongoDB with sample call data |
+| Script               | Description                                 |
+| -------------------- | ------------------------------------------- |
+| `npm run dev`        | Starts the development server               |
+| `npm run build`      | Compiles TypeScript into JavaScript         |
+| `npm run start`      | Runs the compiled app from `dist`           |
+| `npm run seed`       | Seeds MongoDB with sample call data         |
+| `npm test`           | Runs the Jest/SuperTest API test suite      |
+| `npm run test:watch` | Runs tests in watch mode during development |
 
 ---
 
@@ -452,6 +465,57 @@ The API returns JSON error responses.
 
 ---
 
+## Testing 
+
+The project includes automated API tests using Jest, Supertest, and MongoMemoryServer.
+
+The tests cover:
+
+- GET /calls
+- filtering and pagination
+- GET /calls/:callId
+- invalid MongoDB ID handling
+- non-existent call handling
+- archive/unarchive endpoints
+- archive-all/unarchive-all endpoints
+- adding notes
+- deleting calls
+- validation error cases
+
+Run tests:
+
+```bash
+npm test
+```
+
+Run tests in watch mode:
+
+```bash
+npm run test:watch
+```
+
+The test suite uses an in-memory MongoDB instance, so tests do not modify the development or production database.
+
+---
+
+## CI/CD
+
+This project uses GitHub Actions for continuous integration.
+
+The CI workflow runs automatically on push and pull requests. It checks that the project can be installed, built, and tested successfully.
+
+The workflow runs:
+
+```bash
+npm ci
+npm run build
+npm test
+```
+
+The project is currently tested in CI using Node.js 24.
+
+---
+
 ## Database Notes
 
 MongoDB is the source of truth for the application.
@@ -467,14 +531,12 @@ The API maps MongoDB `_id` fields to `id` in responses so clients do not need to
 If I had more time, I would improve the project by adding:
 
 - Authentication and authorization
-- Unit and integration tests
 - Better request validation using a library such as Zod or Joi
 - More advanced logging
 - Rate limiting
 - API documentation with Swagger/OpenAPI
 - Deployment configuration
-- Separate environments for development, testing, and production
-- More detailed pagination metadata if needed by the frontend
+- Separate environments for development and production
 - Search by phone number or note content
 - Update/edit note functionality
 - Delete note functionality
