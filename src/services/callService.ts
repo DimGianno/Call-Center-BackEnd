@@ -199,7 +199,7 @@ export async function addNoteToCall(
 
     call.notes.push({
         _id: new Types.ObjectId(),
-        content: content.trim(),
+        content: content.trim()
     });
 
     const updatedCall = await call.save();

@@ -5,7 +5,6 @@ A backend API for a call center application built with **Node.js**, **Express**,
 The API allows clients to manage call records, filter and paginate call lists, archive/unarchive calls, add notes to calls, delete calls, and seed sample data into the database.
 
 This project was built as part of a backend engineering learning assignment, with focus on REST API design, validation, error handling, persistent storage, testing, and CI/CD.
----
 
 ## Features Implemented
 
@@ -465,7 +464,7 @@ The API returns JSON error responses.
 
 ---
 
-## Testing 
+## Testing
 
 The project includes automated API tests using Jest, Supertest, and MongoMemoryServer.
 

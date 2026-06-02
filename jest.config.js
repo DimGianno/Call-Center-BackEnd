@@ -4,15 +4,15 @@ const presetConfig = createDefaultEsmPreset();
 
 /** @type {import("jest").Config} */
 export default {
-  ...presetConfig,
-  testEnvironment: "node",
+    ...presetConfig,
+    testEnvironment: "node",
 
-  // This helps Jest understand TypeScript source imports like:
-  // import x from "./file.js"
-  // when the real source file is:
-  // file.ts
-  moduleNameMapper: {
-    "^(\\.{1,2}/.*)\\.js$": "$1",
-  },
-  testPathIgnorePatterns: ["/node_modules/", "/dist/"],
+    // This helps Jest understand TypeScript source imports like:
+    // import x from "./file.js"
+    // when the real source file is:
+    // file.ts
+    moduleNameMapper: {
+        "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    testPathIgnorePatterns: ["/node_modules/", "/dist/"]
 };
