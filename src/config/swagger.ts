@@ -11,8 +11,8 @@ export const swaggerSpec = swaggerJSDoc({
         },
         servers: [
             {
-                url: "http://localhost:3000",
-                description: "Local development server"
+                url: "https://call-center-backend-7z8r.onrender.com",
+                description: "Production server"
             }
         ]
     },
