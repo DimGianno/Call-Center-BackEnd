@@ -1,5 +1,10 @@
 import swaggerJSDoc from "swagger-jsdoc";
 
+const serverUrl =
+    process.env.NODE_ENV === "production"
+        ? "https://call-center-backend-7z8r.onrender.com"
+        : `http://localhost:${process.env.PORT || 3000}`;
+
 export const swaggerSpec = swaggerJSDoc({
     definition: {
         openapi: "3.0.0",
@@ -11,8 +16,11 @@ export const swaggerSpec = swaggerJSDoc({
         },
         servers: [
             {
-                url: "https://call-center-backend-7z8r.onrender.com",
-                description: "Production server"
+                url: serverUrl,
+                description:
+                    process.env.NODE_ENV === "production"
+                        ? "Production server"
+                        : "Local development server"
             }
         ]
     },
