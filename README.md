@@ -534,7 +534,7 @@ This project uses GitHub Actions for continuous integration and Render for conti
 
 ## Continuous Integration
 
-The CI workflow runs automatically on push and pull requests. It checks that the project can be installed, built, and tested successfully.
+The CI workflow runs automatically on push and pull requests. It checks that the project can be installed, formatted, linted, type-checked, built, tested, and containerized successfully.
 
 The workflow runs:
 
@@ -556,7 +556,7 @@ A GitHub ruleset is also configured so the protected branch requires CI checks t
 
 The backend API is deployed on Render as a Web Service.
 
-Render is connected to the GitHub repository and automatically redeploys the service when changes are pushed to the configured deployment branch.
+Render is connected to the GitHub repository and automatically redeploys the service when changes are pushed to the master branch.
 
 Render uses the following commands:
 
