@@ -4,13 +4,14 @@ A backend API for a call center application built with **Node.js**, **Express**,
 
 The API allows clients to manage call records, filter and paginate call lists, archive/unarchive calls, add notes to calls, delete calls, and seed sample data into the database.
 
----
+This project was built as part of a backend engineering learning assignment, with focus on REST API design, validation, error handling, persistent storage, testing, and CI/CD.
 
 ## Features Implemented
 
 ### Core Features
 
-- Get all calls
+- Get all active calls
+- Get all archived calls
 - Get a single call by ID
 - Archive a call
 - Return clean JSON error responses
@@ -36,21 +37,31 @@ The API allows clients to manage call records, filter and paginate call lists, a
 - Centralized not-found handling
 - Centralized error handling
 - Health check endpoint
+- Automated API tests
+- GitHub Actions CI workflow
 
 ---
 
 ## Tech Stack
 
-| Technology    | Why it is used                                       |
-| ------------- | ---------------------------------------------------- |
-| Node.js       | Runtime environment for the backend                  |
-| Express       | Web framework for creating API routes and middleware |
-| TypeScript    | Adds type safety and improves maintainability        |
-| MongoDB Atlas | Cloud database used for persistent storage           |
-| Mongoose      | ODM used to define schemas and interact with MongoDB |
-| dotenv        | Loads environment variables from `.env`              |
-| cors          | Allows the frontend to communicate with the backend  |
-| tsx           | Runs TypeScript files during development             |
+| Technology        | Why it is used                                              |
+| ----------------- | ----------------------------------------------------------- |
+| Node.js           | Runtime environment for the backend                         |
+| Express           | Web framework for creating API routes and middleware        |
+| TypeScript        | Adds type safety and improves maintainability               |
+| MongoDB Atlas     | Cloud database used for persistent storage                  |
+| Mongoose          | ODM used to define schemas and interact with MongoDB        |
+| dotenv            | Loads environment variables from `.env`                     |
+| cors              | Allows the frontend to communicate with the backend         |
+| tsx               | Runs TypeScript files during development                    |
+| Jest              | Test Runner                                                 |
+| Supertest         | Tests Express endpoint without manually starting the server |
+| MongoMemoryServer | Temporary in-memory MongoDB for tests                       |
+| GitHub Actions    | Runs automated build and test checks on push                |
+| Swagger / OpenAPI | Interactive API documentation available at /api-docs        |
+| Docker            | Containerizes the backend application                       |
+| ESLint            | Checks code quality and catches common issues               |
+| Prettier          | Enforces consistent code formatting                         |
 
 ---
 
@@ -63,6 +74,7 @@ src/
 
   config/
     db.ts
+    swagger.ts
 
   controllers/
     callControllers.ts
@@ -92,6 +104,9 @@ src/
 
   utils/
     validators.ts
+
+  __tests__/
+    calls.tests.ts
 ```
 
 ---
@@ -101,8 +116,8 @@ src/
 ### 1. Clone the repository
 
 ```bash
-git clone <https://github.com/DimGianno/Call-Center-BackEnd.git>
-cd <your-project-folder>
+git clone https://github.com/DimGianno/Call-Center-BackEnd.git
+cd Call-Center-BackEnd
 ```
 
 ---
@@ -195,12 +210,19 @@ npm run start
 
 ## Available Scripts
 
-| Script          | Description                         |
-| --------------- | ----------------------------------- |
-| `npm run dev`   | Starts the development server       |
-| `npm run build` | Compiles TypeScript into JavaScript |
-| `npm run start` | Runs the compiled app from `dist`   |
-| `npm run seed`  | Seeds MongoDB with sample call data |
+| Script                 | Description                                                     |
+| ---------------------- | --------------------------------------------------------------- |
+| `npm run dev`          | Starts the development server                                   |
+| `npm run build`        | Compiles TypeScript into JavaScript                             |
+| `npm run start`        | Runs the compiled app from `dist`                               |
+| `npm run seed`         | Seeds MongoDB with sample call data                             |
+| `npm run typecheck`    | Runs TypeScript type-checking                                   |
+| `npm run lint`         | Runs ESLint on the src folder                                   |
+| `npm run format`       | Formats the project with Prettier                               |
+| `npm run format:check` | Checks if files follow Prettier formatting                      |
+| `npm test`             | Runs the Jest/SuperTest API test suite                          |
+| `npm run test:watch`   | Runs tests in watch mode during development                     |
+| `npm run check`        | Runs formatting check, linting, type-checking, build, and tests |
 
 ---
 
@@ -452,6 +474,145 @@ The API returns JSON error responses.
 
 ---
 
+## Testing
+
+The project includes automated API tests using Jest, Supertest, and MongoMemoryServer.
+
+The tests cover:
+
+- GET /calls
+- filtering and pagination
+- GET /calls/:callId
+- invalid MongoDB ID handling
+- non-existent call handling
+- archive/unarchive endpoints
+- archive-all/unarchive-all endpoints
+- adding notes
+- deleting calls
+- validation error cases
+
+Run tests:
+
+```bash
+npm test
+```
+
+Run tests in watch mode:
+
+```bash
+npm run test:watch
+```
+
+The test suite uses an in-memory MongoDB instance, so tests do not modify the development or production database.
+
+---
+
+## API Documentation
+
+The project includes interactive API documentation using Swagger/OpenAPI.
+
+After starting the development server, open:
+
+http://localhost:3000/api-docs
+
+The Swagger page documents the main API endpoints, including:
+
+- GET /calls
+- GET /calls/:callId
+- PATCH /calls/:callId/archive
+- PATCH /calls/:callId/unarchive
+- PATCH /calls/archive-all
+- PATCH /calls/unarchive-all
+- POST /calls/:callId/notes
+- DELETE /calls/:callId
+
+---
+
+## CI/CD
+
+This project uses GitHub Actions for continuous integration and Render for continuous deployment.
+
+## Continuous Integration
+
+The CI workflow runs automatically on push and pull requests. It checks that the project can be installed, built, and tested successfully.
+
+The workflow runs:
+
+```bash
+npm ci
+npm run format:check
+npm run lint
+npm run typecheck
+npm run build
+npm test
+docker build -t call-center-backend .
+```
+
+The project is currently tested in CI using Node.js 24.
+
+A GitHub ruleset is also configured so the protected branch requires CI checks to pass before merging.
+
+## Continuous Deployment
+
+The backend API is deployed on Render as a Web Service.
+
+Render is connected to the GitHub repository and automatically redeploys the service when changes are pushed to the configured deployment branch.
+
+Render uses the following commands:
+
+```bash
+npm ci --include=dev && npm run build
+npm run start
+```
+
+The deployed service uses environment variables configured in Render, including:
+
+```json
+NODE_VERSION=24
+MONGODB_URI=<MongoDB Atlas connection string>
+```
+
+The .env file is not committed to GitHub. Production environment variables are managed through Render’s dashboard.
+
+The deployed API includes:
+
+```http
+GET /health
+GET /api-docs
+GET /calls
+```
+
+---
+
+## Docker
+
+The project includes Docker support.
+
+Files added:
+
+Dockerfile
+.dockerignore
+
+The Docker image builds the TypeScript project and runs the compiled backend from dist.
+
+To build the image locally:
+
+```bash
+docker build -t call-center-backend .
+```
+
+To run the container locally:
+
+```bash
+docker run --env-file .env -p 3000:3000 call-center-backend
+```
+
+The .env file is not copied into the Docker image. Environment variables such as MONGODB_URI are passed at runtime.
+
+Note: Running Docker locally requires Docker Desktop or another Docker-compatible runtime.
+
+---
+
 ## Database Notes
 
 MongoDB is the source of truth for the application.
@@ -467,14 +628,10 @@ The API maps MongoDB `_id` fields to `id` in responses so clients do not need to
 If I had more time, I would improve the project by adding:
 
 - Authentication and authorization
-- Unit and integration tests
 - Better request validation using a library such as Zod or Joi
 - More advanced logging
 - Rate limiting
-- API documentation with Swagger/OpenAPI
-- Deployment configuration
-- Separate environments for development, testing, and production
-- More detailed pagination metadata if needed by the frontend
+- Separate environments for development and production
 - Search by phone number or note content
 - Update/edit note functionality
 - Delete note functionality

@@ -100,7 +100,10 @@ export const getAllCallsController = async (req: Request, res: Response) => {
     });
 };
 
-export const getCallByIdController = async (req: Request<CallIdParams>, res: Response) => {
+export const getCallByIdController = async (
+    req: Request<CallIdParams>,
+    res: Response
+) => {
     const callId = req.params.callId;
 
     const result = await getCallById(callId);
@@ -115,7 +118,10 @@ export const getCallByIdController = async (req: Request<CallIdParams>, res: Res
     res.status(200).json(result.data);
 };
 
-export const archiveCallController = async (req: Request<CallIdParams>, res: Response) => {
+export const archiveCallController = async (
+    req: Request<CallIdParams>,
+    res: Response
+) => {
     const callId = req.params.callId;
 
     const result = await archiveCall(callId);
@@ -130,7 +136,10 @@ export const archiveCallController = async (req: Request<CallIdParams>, res: Res
     res.status(200).json(result.data);
 };
 
-export const unarchiveCallController = async (req: Request<CallIdParams>, res: Response) => {
+export const unarchiveCallController = async (
+    req: Request<CallIdParams>,
+    res: Response
+) => {
     const callId = req.params.callId;
 
     const result = await unarchiveCall(callId);
@@ -145,7 +154,10 @@ export const unarchiveCallController = async (req: Request<CallIdParams>, res: R
     res.status(200).json(result.data);
 };
 
-export const addNoteToCallController = async (req: Request<CallIdParams>, res: Response) => {
+export const addNoteToCallController = async (
+    req: Request<CallIdParams>,
+    res: Response
+) => {
     const callId = req.params.callId;
 
     const content = req.body.content;
@@ -169,7 +181,10 @@ export const addNoteToCallController = async (req: Request<CallIdParams>, res: R
     res.status(201).json(result.data);
 };
 
-export const deleteCallController = async (req: Request<CallIdParams>, res: Response) => {
+export const deleteCallController = async (
+    req: Request<CallIdParams>,
+    res: Response
+) => {
     const callId = req.params.callId;
 
     const result = await deleteCall(callId);
