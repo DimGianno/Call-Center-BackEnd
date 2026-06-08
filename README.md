@@ -2,6 +2,8 @@
 
 A backend API for a call center application built with **Node.js**, **Express**, **TypeScript**, **MongoDB Atlas**, and **Mongoose**.
 
+Live URL: https://call-center-backend-7z8r.onrender.com/
+
 The API allows clients to manage call records, filter and paginate call lists, archive/unarchive calls, add notes to calls, delete calls, and seed sample data into the database.
 
 This project was built as part of a backend engineering learning assignment, with focus on REST API design, validation, error handling, persistent storage, testing, and CI/CD.
@@ -555,6 +557,8 @@ A GitHub ruleset is also configured so the protected branch requires CI checks t
 ## Continuous Deployment
 
 The backend API is deployed on Render as a Web Service.
+
+Live URL: https://call-center-backend-7z8r.onrender.com/
 
 Render is connected to the GitHub repository and automatically redeploys the service when changes are pushed to the master branch.
 
