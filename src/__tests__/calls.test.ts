@@ -283,6 +283,24 @@ describe("PATCH /calls/unarchive-all", () => {
     });
 });
 
+describe("POST /calls/reset", () => {
+    test("resets calls to the sample data", async () => {
+        await CallDbModel.deleteOne({ _id: seededCalls[0]._id });
+
+        const response = await request(app).post("/calls/reset");
+
+        const calls = await CallDbModel.find({});
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({
+            message: "Calls reset successfully",
+            deletedCount: 3,
+            insertedCount: 150
+        });
+        expect(calls.length).toBe(150);
+    });
+});
+
 describe("POST /calls/:callId/notes", () => {
     test("adds a note to a call", async () => {
         const callId = seededCalls[1]._id.toString();

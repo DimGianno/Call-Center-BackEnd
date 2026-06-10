@@ -29,6 +29,7 @@ This project was built as part of a backend engineering learning assignment, wit
 - Unarchive all archived calls
 - Add notes to a call
 - Delete a call
+- Reset calls to sample data through the API
 - Filter calls by:
     - archived status
     - direction
@@ -84,6 +85,7 @@ src/
   db/
     models/
       callDbModel.ts
+    mockCalls.ts
     seed.ts
 
   mappers/
@@ -249,6 +251,7 @@ npm run start
 | PATCH  | `/calls/:callId/unarchive` | Unarchive a single call                 |
 | PATCH  | `/calls/archive-all`       | Archive all active calls                |
 | PATCH  | `/calls/unarchive-all`     | Unarchive all archived calls            |
+| POST   | `/calls/reset`             | Reset calls to sample data              |
 | POST   | `/calls/:callId/notes`     | Add a note to a call                    |
 | DELETE | `/calls/:callId`           | Delete a call                           |
 
@@ -412,6 +415,28 @@ Example response:
 
 ---
 
+## Reset Calls
+
+### Request
+
+```http
+POST /calls/reset
+```
+
+This deletes all calls and restores the sample call data.
+
+### Example Response
+
+```json
+{
+    "message": "Calls reset successfully",
+    "deletedCount": 4,
+    "insertedCount": 150
+}
+```
+
+---
+
 ## Delete a Call
 
 ### Request
@@ -489,6 +514,7 @@ The tests cover:
 - non-existent call handling
 - archive/unarchive endpoints
 - archive-all/unarchive-all endpoints
+- reset calls endpoint
 - adding notes
 - deleting calls
 - validation error cases
@@ -525,6 +551,7 @@ The Swagger page documents the main API endpoints, including:
 - PATCH /calls/:callId/unarchive
 - PATCH /calls/archive-all
 - PATCH /calls/unarchive-all
+- POST /calls/reset
 - POST /calls/:callId/notes
 - DELETE /calls/:callId
 

@@ -7,7 +7,8 @@ import {
     addNoteToCall,
     deleteCall,
     archiveAllCalls,
-    unarchiveAllCalls
+    unarchiveAllCalls,
+    resetCalls
 } from "../services/callService.js";
 import type { CallFilters } from "../models/callModel.js";
 type CallIdParams = {
@@ -220,6 +221,19 @@ export const unarchiveAllCallsController = async (
     res: Response
 ) => {
     const result = await unarchiveAllCalls();
+
+    if (!result.success) {
+        res.status(result.statusCode).json({
+            error: result.error
+        });
+        return;
+    }
+
+    res.status(200).json(result.data);
+};
+
+export const resetCallsController = async (_req: Request, res: Response) => {
+    const result = await resetCalls();
 
     if (!result.success) {
         res.status(result.statusCode).json({
