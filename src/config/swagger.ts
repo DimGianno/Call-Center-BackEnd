@@ -2,7 +2,7 @@ import swaggerJSDoc from "swagger-jsdoc";
 
 const serverUrl =
     process.env.NODE_ENV === "production"
-        ? "https://call-center-backend-7z8r.onrender.com"
+        ? "https://staging-4b8t.onrender.com"
         : `http://localhost:${process.env.PORT || 3000}`;
 
 export const swaggerSpec = swaggerJSDoc({
