@@ -1,9 +1,9 @@
 import swaggerJSDoc from "swagger-jsdoc";
 
 const serverUrl =
-    process.env.NODE_ENV === "production"
+    process.env.NODE_ENV === "staging"
         ? "https://staging-4b8t.onrender.com"
-        : `http://localhost:${process.env.PORT || 10000}`;
+        : `http://localhost:${process.env.PORT || 3000}`;
 
 export const swaggerSpec = swaggerJSDoc({
     definition: {
