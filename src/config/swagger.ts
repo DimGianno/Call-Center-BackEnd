@@ -11,8 +11,7 @@ export const swaggerSpec = swaggerJSDoc({
         info: {
             title: "Call Center Backend reset api",
             version: "1.0.1",
-            description:
-                "REST API for managing call center reset calls."
+            description: "REST API for managing call center reset calls."
         },
         servers: [
             {
