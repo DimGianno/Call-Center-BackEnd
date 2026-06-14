@@ -10,11 +10,13 @@ import {
     unarchiveAllCalls
 } from "../services/callService.js";
 import type { CallFilters } from "../models/callModel.js";
+import { getAuthenticatedUserId } from "../middleware/authMiddleware.js";
 type CallIdParams = {
     callId: string;
 };
 
 export const getAllCallsController = async (req: Request, res: Response) => {
+    const userId = getAuthenticatedUserId(req);
     const filters: CallFilters = {};
 
     const isArchived = req.query.is_archived;
@@ -85,7 +87,7 @@ export const getAllCallsController = async (req: Request, res: Response) => {
         return;
     }
 
-    const result = await getAllCalls(filters, { page, limit });
+    const result = await getAllCalls(userId, filters, { page, limit });
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -104,9 +106,10 @@ export const getCallByIdController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
-    const result = await getCallById(callId);
+    const result = await getCallById(userId, callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -122,9 +125,10 @@ export const archiveCallController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
-    const result = await archiveCall(callId);
+    const result = await archiveCall(userId, callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -140,9 +144,10 @@ export const unarchiveCallController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
-    const result = await unarchiveCall(callId);
+    const result = await unarchiveCall(userId, callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -158,6 +163,7 @@ export const addNoteToCallController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
     const content = req.body.content;
@@ -169,7 +175,7 @@ export const addNoteToCallController = async (
         return;
     }
 
-    const result = await addNoteToCall(callId, content);
+    const result = await addNoteToCall(userId, callId, content);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -185,9 +191,10 @@ export const deleteCallController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
-    const result = await deleteCall(callId);
+    const result = await deleteCall(userId, callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -203,7 +210,8 @@ export const archiveAllCallsController = async (
     _req: Request,
     res: Response
 ) => {
-    const result = await archiveAllCalls();
+    const userId = getAuthenticatedUserId(_req);
+    const result = await archiveAllCalls(userId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -219,7 +227,8 @@ export const unarchiveAllCallsController = async (
     _req: Request,
     res: Response
 ) => {
-    const result = await unarchiveAllCalls();
+    const userId = getAuthenticatedUserId(_req);
+    const result = await unarchiveAllCalls(userId);
 
     if (!result.success) {
         res.status(result.statusCode).json({

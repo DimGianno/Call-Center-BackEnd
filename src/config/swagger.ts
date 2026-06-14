@@ -1,9 +1,13 @@
 import swaggerJSDoc from "swagger-jsdoc";
 
-const serverUrl =
-    process.env.NODE_ENV === "production"
-        ? "https://call-center-backend-7z8r.onrender.com"
-        : `http://localhost:${process.env.PORT || 3000}`;
+const localServerUrl = `http://localhost:${process.env.PORT || 3000}`;
+const stagingServerUrl = "https://staging-4b8t.onrender.com";
+const isStagingDeployment = process.env.NODE_ENV === "staging";
+
+const serverUrl = isStagingDeployment ? stagingServerUrl : localServerUrl;
+const serverDescription = isStagingDeployment
+    ? "Staging server"
+    : "Local development server";
 
 export const swaggerSpec = swaggerJSDoc({
     definition: {
@@ -14,13 +18,19 @@ export const swaggerSpec = swaggerJSDoc({
             description:
                 "REST API for managing call center records, notes, archive status, filters, and pagination."
         },
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT"
+                }
+            }
+        },
         servers: [
             {
                 url: serverUrl,
-                description:
-                    process.env.NODE_ENV === "production"
-                        ? "Production server"
-                        : "Local development server"
+                description: serverDescription
             }
         ]
     },

@@ -15,11 +15,23 @@ import {
 } from "../mappers/callMapper.js";
 import { Types } from "mongoose";
 
+const getUserObjectId = (userId: string): Types.ObjectId => {
+    return new Types.ObjectId(userId);
+};
+
 export async function getAllCalls(
+    userId: string,
     filters: CallFilters = {},
     paginationOptions: PaginationOptions = { page: 1, limit: 10 }
 ): Promise<ServiceResult<PaginatedResult<Call>>> {
-    const query: Partial<CallFilters> = {};
+    const query: {
+        user_id: Types.ObjectId;
+        is_archived?: boolean;
+        direction?: CallFilters["direction"];
+        call_type?: CallFilters["call_type"];
+    } = {
+        user_id: getUserObjectId(userId)
+    };
 
     if (typeof filters.is_archived === "boolean") {
         query.is_archived = filters.is_archived;
@@ -65,6 +77,7 @@ export async function getAllCalls(
 }
 
 export async function getCallById(
+    userId: string,
     callId: string
 ): Promise<ServiceResult<CallWithNotes>> {
     if (!isValidMongoObjectId(callId)) {
@@ -75,7 +88,10 @@ export async function getCallById(
         };
     }
 
-    const call = await CallDbModel.findById(callId);
+    const call = await CallDbModel.findOne({
+        _id: callId,
+        user_id: getUserObjectId(userId)
+    });
 
     if (!call) {
         return {
@@ -92,6 +108,7 @@ export async function getCallById(
 }
 
 export async function archiveCall(
+    userId: string,
     callId: string
 ): Promise<ServiceResult<Call>> {
     if (!isValidMongoObjectId(callId)) {
@@ -102,7 +119,10 @@ export async function archiveCall(
         };
     }
 
-    const call = await CallDbModel.findById(callId);
+    const call = await CallDbModel.findOne({
+        _id: callId,
+        user_id: getUserObjectId(userId)
+    });
 
     if (!call) {
         return {
@@ -130,6 +150,7 @@ export async function archiveCall(
 }
 
 export async function unarchiveCall(
+    userId: string,
     callId: string
 ): Promise<ServiceResult<Call>> {
     if (!isValidMongoObjectId(callId)) {
@@ -140,7 +161,10 @@ export async function unarchiveCall(
         };
     }
 
-    const call = await CallDbModel.findById(callId);
+    const call = await CallDbModel.findOne({
+        _id: callId,
+        user_id: getUserObjectId(userId)
+    });
 
     if (!call) {
         return {
@@ -168,6 +192,7 @@ export async function unarchiveCall(
 }
 
 export async function addNoteToCall(
+    userId: string,
     callId: string,
     content: string
 ): Promise<ServiceResult<CallWithNotes>> {
@@ -187,7 +212,10 @@ export async function addNoteToCall(
         };
     }
 
-    const call = await CallDbModel.findById(callId);
+    const call = await CallDbModel.findOne({
+        _id: callId,
+        user_id: getUserObjectId(userId)
+    });
 
     if (!call) {
         return {
@@ -211,6 +239,7 @@ export async function addNoteToCall(
 }
 
 export async function deleteCall(
+    userId: string,
     callId: string
 ): Promise<ServiceResult<{ message: string }>> {
     if (!isValidMongoObjectId(callId)) {
@@ -221,7 +250,10 @@ export async function deleteCall(
         };
     }
 
-    const deletedCall = await CallDbModel.findByIdAndDelete(callId);
+    const deletedCall = await CallDbModel.findOneAndDelete({
+        _id: callId,
+        user_id: getUserObjectId(userId)
+    });
 
     if (!deletedCall) {
         return {
@@ -239,11 +271,11 @@ export async function deleteCall(
     };
 }
 
-export async function archiveAllCalls(): Promise<
-    ServiceResult<{ message: string; modifiedCount: number }>
-> {
+export async function archiveAllCalls(
+    userId: string
+): Promise<ServiceResult<{ message: string; modifiedCount: number }>> {
     const result = await CallDbModel.updateMany(
-        { is_archived: false },
+        { user_id: getUserObjectId(userId), is_archived: false },
         { $set: { is_archived: true } }
     );
 
@@ -256,11 +288,11 @@ export async function archiveAllCalls(): Promise<
     };
 }
 
-export async function unarchiveAllCalls(): Promise<
-    ServiceResult<{ message: string; modifiedCount: number }>
-> {
+export async function unarchiveAllCalls(
+    userId: string
+): Promise<ServiceResult<{ message: string; modifiedCount: number }>> {
     const result = await CallDbModel.updateMany(
-        { is_archived: true },
+        { user_id: getUserObjectId(userId), is_archived: true },
         { $set: { is_archived: false } }
     );
 

@@ -1,8 +1,13 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { CallDbModel } from "./models/callDbModel.js";
+import { UserDbModel } from "./models/userDbModel.js";
+import { hashPassword } from "../utils/password.js";
 
 dotenv.config();
+
+const demoUserEmail = "demo@example.com";
+const demoUserPassword = "password123";
 
 const directions = ["inbound", "outbound"] as const;
 const callTypes = ["answered", "missed", "voicemail"] as const;
@@ -33,13 +38,14 @@ const generateNotes = (callIndex: number) => {
     }));
 };
 
-const generateMockCalls = (count: number) => {
+const generateMockCalls = (count: number, userId: mongoose.Types.ObjectId) => {
     return Array.from({ length: count }, (_, index) => {
         const callNumber = index + 1;
         const direction = directions[index % directions.length];
         const call_type = callTypes[index % callTypes.length];
 
         return {
+            user_id: userId,
             direction,
             from:
                 direction === "inbound"
@@ -78,12 +84,35 @@ const runSeed = async () => {
     try {
         await mongoose.connect(mongoUri);
 
-        const mockCalls = generateMockCalls(150);
+        const passwordFields = await hashPassword(demoUserPassword);
+        const demoUser = await UserDbModel.findOneAndUpdate(
+            { email: demoUserEmail },
+            {
+                $set: {
+                    name: "Demo User",
+                    email: demoUserEmail,
+                    ...passwordFields
+                }
+            },
+            {
+                upsert: true,
+                new: true,
+                setDefaultsOnInsert: true
+            }
+        );
+
+        if (!demoUser) {
+            throw new Error("Failed to create demo user");
+        }
+
+        const mockCalls = generateMockCalls(150, demoUser._id);
 
         await CallDbModel.deleteMany({});
         await CallDbModel.insertMany(mockCalls);
 
         console.log(`Seeded ${mockCalls.length} calls successfully`);
+        console.log(`Demo user email: ${demoUserEmail}`);
+        console.log(`Demo user password: ${demoUserPassword}`);
     } catch (error) {
         console.error("Failed to seed database", error);
         process.exitCode = 1;
