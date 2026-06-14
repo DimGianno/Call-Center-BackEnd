@@ -416,6 +416,35 @@ describe("PATCH /calls/unarchive-all", () => {
     });
 });
 
+describe("POST /calls/reset", () => {
+    test("resets the authenticated user's calls to the sample data", async () => {
+        await CallDbModel.deleteOne({ _id: seededCalls[0]._id });
+
+        const response = await postWithAuth("/calls/reset");
+
+        const primaryUserCalls = await CallDbModel.find({
+            user_id: primaryUser._id
+        });
+        const otherUserCalls = await CallDbModel.find({
+            user_id: otherUser._id
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({
+            message: "Calls reset successfully",
+            deletedCount: 3,
+            insertedCount: 150
+        });
+        expect(primaryUserCalls.length).toBe(150);
+        expect(
+            primaryUserCalls.every((call) =>
+                call.user_id.equals(primaryUser._id)
+            )
+        ).toBe(true);
+        expect(otherUserCalls.length).toBe(2);
+    });
+});
+
 describe("POST /calls/:callId/notes", () => {
     test("adds a note to a call", async () => {
         const callId = seededCalls[1]._id.toString();

@@ -7,7 +7,8 @@ import {
     addNoteToCallController,
     deleteCallController,
     archiveAllCallsController,
-    unarchiveAllCallsController
+    unarchiveAllCallsController,
+    resetCallsController
 } from "../controllers/callControllers.js";
 
 /**
@@ -213,6 +214,36 @@ router.patch("/archive-all", archiveAllCallsController);
  *                   example: 3
  */
 router.patch("/unarchive-all", unarchiveAllCallsController);
+
+/**
+ * @openapi
+ * /calls/reset:
+ *   post:
+ *     summary: Reset calls
+ *     description: Deletes the authenticated user's calls and restores sample call data for that user.
+ *     tags:
+ *       - Calls
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Calls reset successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Calls reset successfully"
+ *                 deletedCount:
+ *                   type: number
+ *                   example: 4
+ *                 insertedCount:
+ *                   type: number
+ *                   example: 150
+ */
+router.post("/reset", resetCallsController);
 
 /**
  * @openapi

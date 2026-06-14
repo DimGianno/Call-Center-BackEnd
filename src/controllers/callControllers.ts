@@ -7,7 +7,8 @@ import {
     addNoteToCall,
     deleteCall,
     archiveAllCalls,
-    unarchiveAllCalls
+    unarchiveAllCalls,
+    resetCalls
 } from "../services/callService.js";
 import type { CallFilters } from "../models/callModel.js";
 import { getAuthenticatedUserId } from "../middleware/authMiddleware.js";
@@ -229,6 +230,20 @@ export const unarchiveAllCallsController = async (
 ) => {
     const userId = getAuthenticatedUserId(_req);
     const result = await unarchiveAllCalls(userId);
+
+    if (!result.success) {
+        res.status(result.statusCode).json({
+            error: result.error
+        });
+        return;
+    }
+
+    res.status(200).json(result.data);
+};
+
+export const resetCallsController = async (_req: Request, res: Response) => {
+    const userId = getAuthenticatedUserId(_req);
+    const result = await resetCalls(userId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
