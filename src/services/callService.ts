@@ -14,6 +14,7 @@ import {
     mapCallDocumentToCallWithNotes
 } from "../mappers/callMapper.js";
 import { Types } from "mongoose";
+import { generateMockCalls } from "../db/mockCalls.js";
 
 export async function getAllCalls(
     filters: CallFilters = {},
@@ -269,6 +270,28 @@ export async function unarchiveAllCalls(): Promise<
         data: {
             message: "All archived calls unarchived successfully",
             modifiedCount: result.modifiedCount
+        }
+    };
+}
+
+export async function resetCalls(): Promise<
+    ServiceResult<{
+        message: string;
+        deletedCount: number;
+        insertedCount: number;
+    }>
+> {
+    const mockCalls = generateMockCalls(150);
+
+    const deleteResult = await CallDbModel.deleteMany({});
+    const insertedCalls = await CallDbModel.insertMany(mockCalls);
+
+    return {
+        success: true,
+        data: {
+            message: "Calls reset successfully",
+            deletedCount: deleteResult.deletedCount,
+            insertedCount: insertedCalls.length
         }
     };
 }
