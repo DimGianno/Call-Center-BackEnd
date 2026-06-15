@@ -10,6 +10,7 @@ export type NoteDocument = NoteInput & {
 
 export type CallDocument = {
     _id: mongoose.Types.ObjectId;
+    user_id: mongoose.Types.ObjectId;
     direction: "inbound" | "outbound";
     from: string;
     to: string;
@@ -35,6 +36,12 @@ const noteSchema = new Schema<NoteInput>(
 
 const callSchema = new Schema<CallDocument>(
     {
+        user_id: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+            index: true
+        },
         direction: {
             type: String,
             required: true,
@@ -77,6 +84,17 @@ const callSchema = new Schema<CallDocument>(
     },
     {
         versionKey: false
+    }
+);
+
+callSchema.index(
+    {
+        user_id: 1,
+        is_archived: 1,
+        created_at: -1
+    },
+    {
+        name: "user_archive_created_at_idx"
     }
 );
 

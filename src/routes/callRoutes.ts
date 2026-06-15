@@ -87,6 +87,8 @@ const router = Router();
  *     description: Returns calls with optional filtering and pagination. By default, it returns active/unarchived calls.
  *     tags:
  *       - Calls
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: is_archived
@@ -167,6 +169,8 @@ router.get("/", getAllCallsController);
  *     description: Archives all calls where is_archived is false.
  *     tags:
  *       - Calls
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: All active calls archived successfully.
@@ -192,6 +196,8 @@ router.patch("/archive-all", archiveAllCallsController);
  *     description: Unarchives all calls where is_archived is true.
  *     tags:
  *       - Calls
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: All archived calls unarchived successfully.
@@ -214,9 +220,11 @@ router.patch("/unarchive-all", unarchiveAllCallsController);
  * /calls/reset:
  *   post:
  *     summary: Reset calls
- *     description: Deletes all calls and restores the sample call data.
+ *     description: Deletes the authenticated user's calls and restores sample call data for that user.
  *     tags:
  *       - Calls
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Calls reset successfully.
@@ -245,6 +253,8 @@ router.post("/reset", resetCallsController);
  *     description: Returns one call by ID, including its notes.
  *     tags:
  *       - Calls
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"
  *     responses:
@@ -277,6 +287,8 @@ router.get("/:callId", getCallByIdController);
  *     description: Sets is_archived to true for a single call.
  *     tags:
  *       - Calls
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"
  *     responses:
@@ -309,6 +321,8 @@ router.patch("/:callId/archive", archiveCallController);
  *     description: Sets is_archived to false for a single call.
  *     tags:
  *       - Calls
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"
  *     responses:
@@ -341,6 +355,8 @@ router.patch("/:callId/unarchive", unarchiveCallController);
  *     description: Adds a note to an existing call and returns the updated call.
  *     tags:
  *       - Calls
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"
  *     requestBody:
@@ -385,6 +401,8 @@ router.post("/:callId/notes", addNoteToCallController);
  *     description: Deletes a call by ID.
  *     tags:
  *       - Calls
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"
  *     responses:

@@ -1,3 +1,5 @@
+import type { Types } from "mongoose";
+
 const directions = ["inbound", "outbound"] as const;
 const callTypes = ["answered", "missed", "voicemail"] as const;
 
@@ -5,6 +7,7 @@ type Direction = (typeof directions)[number];
 type CallType = (typeof callTypes)[number];
 
 export type MockCallInput = {
+    user_id: Types.ObjectId;
     direction: Direction;
     from: string;
     to: string;
@@ -43,13 +46,17 @@ const generateNotes = (callIndex: number): MockCallInput["notes"] => {
     }));
 };
 
-export const generateMockCalls = (count: number): MockCallInput[] => {
+export const generateMockCalls = (
+    count: number,
+    userId: Types.ObjectId
+): MockCallInput[] => {
     return Array.from({ length: count }, (_, index) => {
         const callNumber = index + 1;
         const direction = directions[index % directions.length];
         const call_type = callTypes[index % callTypes.length];
 
         return {
+            user_id: userId,
             direction,
             from:
                 direction === "inbound"

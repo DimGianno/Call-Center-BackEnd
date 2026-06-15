@@ -2,7 +2,9 @@
 
 A backend API for a call center application built with **Node.js**, **Express**, **TypeScript**, **MongoDB Atlas**, and **Mongoose**.
 
-Live URL: https://call-center-backend-7z8r.onrender.com/
+Staging URL: https://staging-4b8t.onrender.com/
+
+Production URL: https://call-center-backend-7z8r.onrender.com/
 
 The API allows clients to manage call records, filter and paginate call lists, archive/unarchive calls, add notes to calls, delete calls, and seed sample data into the database.
 
@@ -21,6 +23,9 @@ This project was built as part of a backend engineering learning assignment, wit
 - Mongoose schema/model for calls
 - Seed script for sample data
 - Environment variable configuration
+- User signup and login
+- JWT authentication for protected API routes
+- User-owned call records
 
 ### Bonus / Extended Features
 
@@ -80,18 +85,22 @@ src/
     swagger.ts
 
   controllers/
+    authControllers.ts
     callControllers.ts
 
   db/
     models/
       callDbModel.ts
+      userDbModel.ts
     mockCalls.ts
     seed.ts
 
   mappers/
     callMapper.ts
+    userMapper.ts
 
   middleware/
+    authMiddleware.ts
     errorHandler.ts
     notFoundHandler.ts
     requestLogger.ts
@@ -99,18 +108,24 @@ src/
   models/
     callModel.ts
     serviceTypes.ts
+    userModel.ts
 
   routes/
+    authRoutes.ts
     callRoutes.ts
 
   services/
+    authService.ts
     callService.ts
 
   utils/
+    jwt.ts
+    password.ts
     validators.ts
 
   __tests__/
-    calls.tests.ts
+    auth.test.ts
+    calls.test.ts
 ```
 
 ---
@@ -163,6 +178,8 @@ Add:
 ```env
 PORT=3000
 MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+API_BASE_URL=http://localhost:3000
 ```
 
 Make sure `.env` is included in `.gitignore` so your database password is not pushed to GitHub.
@@ -241,19 +258,50 @@ npm run start
 
 ---
 
+### Auth
+
+| Method | Endpoint       | Description                                 |
+| ------ | -------------- | ------------------------------------------- |
+| POST   | `/auth/signup` | Create a user and return a JWT access token |
+| POST   | `/auth/login`  | Log in a user and return a JWT access token |
+
+Successful auth responses return:
+
+```json
+{
+    "user": {
+        "id": "665f1f4e91a5b6a4d1c8b123",
+        "name": "Dimitrios",
+        "email": "user@example.com",
+        "created_at": "2026-01-01T10:00:00.000Z"
+    },
+    "accessToken": "jwt-access-token"
+}
+```
+
+Use the returned token for protected requests:
+
+```http
+Authorization: Bearer jwt-access-token
+```
+
+---
+
 ### Calls
 
-| Method | Endpoint                   | Description                             |
-| ------ | -------------------------- | --------------------------------------- |
-| GET    | `/calls`                   | Get calls with filtering and pagination |
-| GET    | `/calls/:callId`           | Get a single call with notes            |
-| PATCH  | `/calls/:callId/archive`   | Archive a single call                   |
-| PATCH  | `/calls/:callId/unarchive` | Unarchive a single call                 |
-| PATCH  | `/calls/archive-all`       | Archive all active calls                |
-| PATCH  | `/calls/unarchive-all`     | Unarchive all archived calls            |
-| POST   | `/calls/reset`             | Reset calls to sample data              |
-| POST   | `/calls/:callId/notes`     | Add a note to a call                    |
-| DELETE | `/calls/:callId`           | Delete a call                           |
+All `/calls` endpoints require a JWT bearer token. Calls are scoped to the authenticated user.
+
+| Method | Endpoint                   | Description                               |
+| ------ | -------------------------- | ----------------------------------------- |
+| GET    | `/calls`                   | Get calls with filtering and pagination   |
+| GET    | `/calls/:callId`           | Get a single call with notes              |
+| PATCH  | `/calls/:callId/archive`   | Archive a single call                     |
+| PATCH  | `/calls/:callId/unarchive` | Unarchive a single call                   |
+| PATCH  | `/calls/archive-all`       | Archive all active calls                  |
+| PATCH  | `/calls/unarchive-all`     | Unarchive all archived calls              |
+| POST   | `/calls/reset`             | Reset current user's calls to sample data |
+| POST   | `/calls/:callId/notes`     | Add a note to a call                      |
+| DELETE | `/calls/:callId`           | Delete a call                             |
 
 ---
 
@@ -280,6 +328,10 @@ npm run start
 
 ```http
 GET /calls
+Authorization: Bearer jwt-access-token
+```
+
+```http
 GET /calls?page=1&limit=10
 GET /calls?is_archived=true
 GET /calls?direction=inbound
@@ -423,7 +475,7 @@ Example response:
 POST /calls/reset
 ```
 
-This deletes all calls and restores the sample call data.
+This deletes the authenticated user's calls and restores sample call data for that user.
 
 ### Example Response
 
@@ -507,6 +559,9 @@ The project includes automated API tests using Jest, Supertest, and MongoMemoryS
 
 The tests cover:
 
+- user signup and login
+- JWT validation for protected routes
+- user-owned call access
 - GET /calls
 - filtering and pagination
 - GET /calls/:callId
@@ -531,7 +586,7 @@ Run tests in watch mode:
 npm run test:watch
 ```
 
-The test suite uses an in-memory MongoDB instance, so tests do not modify the development or production database.
+The test suite uses an in-memory MongoDB instance, so tests do not modify the development or staging database.
 
 ---
 
@@ -543,8 +598,18 @@ After starting the development server, open:
 
 http://localhost:3000/api-docs
 
+Staging API docs are available at:
+
+https://staging-4b8t.onrender.com/api-docs
+
+Production API docs are available at:
+
+https://call-center-backend-7z8r.onrender.com/api-docs
+
 The Swagger page documents the main API endpoints, including:
 
+- POST /auth/signup
+- POST /auth/login
 - GET /calls
 - GET /calls/:callId
 - PATCH /calls/:callId/archive
@@ -583,11 +648,13 @@ A GitHub ruleset is also configured so the protected branch requires CI checks t
 
 ## Continuous Deployment
 
-The backend API is deployed on Render as a Web Service.
+The backend API is deployed on Render as Web Services.
 
-Live URL: https://call-center-backend-7z8r.onrender.com/
+Staging URL: https://staging-4b8t.onrender.com/
 
-Render is connected to the GitHub repository and automatically redeploys the service when changes are pushed to the master branch.
+Production URL: https://call-center-backend-7z8r.onrender.com/
+
+Render is connected to the GitHub repository and automatically redeploys each service when changes are pushed to the branch configured in Render.
 
 Render uses the following commands:
 
@@ -600,16 +667,35 @@ The deployed service uses environment variables configured in Render, including:
 
 ```json
 NODE_VERSION=24
+NODE_ENV=<staging or production>
+API_BASE_URL=<deployed backend URL>
 MONGODB_URI=<MongoDB Atlas connection string>
+JWT_SECRET=<JWT signing secret>
 ```
 
-The .env file is not committed to GitHub. Production environment variables are managed through Render’s dashboard.
+For staging:
+
+```env
+NODE_ENV=staging
+API_BASE_URL=https://staging-4b8t.onrender.com
+```
+
+For production:
+
+```env
+NODE_ENV=production
+API_BASE_URL=https://call-center-backend-7z8r.onrender.com
+```
+
+The .env file is not committed to GitHub. Deployment environment variables are managed through Render's dashboard.
 
 The deployed API includes:
 
 ```http
 GET /health
 GET /api-docs
+POST /auth/signup
+POST /auth/login
 GET /calls
 ```
 
@@ -638,7 +724,7 @@ To run the container locally:
 docker run --env-file .env -p 3000:3000 call-center-backend
 ```
 
-The .env file is not copied into the Docker image. Environment variables such as MONGODB_URI are passed at runtime.
+The .env file is not copied into the Docker image. Environment variables such as MONGODB_URI and JWT_SECRET are passed at runtime.
 
 Note: Running Docker locally requires Docker Desktop or another Docker-compatible runtime.
 
@@ -658,11 +744,11 @@ The API maps MongoDB `_id` fields to `id` in responses so clients do not need to
 
 If I had more time, I would improve the project by adding:
 
-- Authentication and authorization
-- Better request validation using a library such as Zod or Joi
+- Refresh tokens or longer-lived session management
+- More complete request validation across all endpoints
 - More advanced logging
 - Rate limiting
-- Separate environments for development and production
+- Separate production environment in addition to development and staging
 - Search by phone number or note content
 - Update/edit note functionality
 - Delete note functionality

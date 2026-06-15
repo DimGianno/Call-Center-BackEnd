@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import {
     getAllCalls,
     getCallById,
@@ -11,82 +12,77 @@ import {
     resetCalls
 } from "../services/callService.js";
 import type { CallFilters } from "../models/callModel.js";
+import { getAuthenticatedUserId } from "../middleware/authMiddleware.js";
 type CallIdParams = {
     callId: string;
 };
 
+const getCallsQuerySchema = z
+    .object({
+        is_archived: z.enum(["true", "false"]).optional(),
+        direction: z.enum(["inbound", "outbound"]).optional(),
+        call_type: z.enum(["answered", "missed", "voicemail"]).optional(),
+        page: z.coerce.number().int().min(1).optional().default(1),
+        limit: z.coerce.number().int().min(1).max(50).optional().default(10)
+    })
+    .strict();
+
+const getQueryValidationErrorMessage = (error: z.ZodError): string => {
+    const firstIssue = error.issues[0];
+    const fieldName = firstIssue?.path[0];
+
+    if (fieldName === "is_archived") {
+        return "Invalid is_archived filter. Expected 'true' or 'false'.";
+    }
+
+    if (fieldName === "direction") {
+        return "Invalid direction filter. Expected 'inbound' or 'outbound'.";
+    }
+
+    if (fieldName === "call_type") {
+        return "Invalid call_type filter. Expected 'answered', 'missed', or 'voicemail'.";
+    }
+
+    if (fieldName === "page") {
+        return "Invalid page. Expected a positive integer.";
+    }
+
+    if (fieldName === "limit") {
+        return "Invalid limit. Expected a positive integer between 1 and 50.";
+    }
+
+    return "Invalid query parameter.";
+};
+
 export const getAllCallsController = async (req: Request, res: Response) => {
+    const userId = getAuthenticatedUserId(req);
+
+    const parsedQuery = getCallsQuerySchema.safeParse(req.query);
+
+    if (!parsedQuery.success) {
+        res.status(400).json({
+            error: getQueryValidationErrorMessage(parsedQuery.error)
+        });
+        return;
+    }
+
     const filters: CallFilters = {};
 
-    const isArchived = req.query.is_archived;
-
-    if (isArchived !== undefined) {
-        if (isArchived === "true") {
-            filters.is_archived = true;
-        } else if (isArchived === "false") {
-            filters.is_archived = false;
-        } else {
-            res.status(400).json({
-                error: "Invalid is_archived filter. Expected 'true' or 'false'."
-            });
-            return;
-        }
+    if (parsedQuery.data.is_archived !== undefined) {
+        filters.is_archived = parsedQuery.data.is_archived === "true";
     }
 
-    const direction = req.query.direction;
-
-    if (direction !== undefined) {
-        if (direction === "inbound" || direction === "outbound") {
-            filters.direction = direction;
-        } else {
-            res.status(400).json({
-                error: "Invalid direction filter. Expected 'inbound' or 'outbound'."
-            });
-            return;
-        }
+    if (parsedQuery.data.direction !== undefined) {
+        filters.direction = parsedQuery.data.direction;
     }
 
-    const callType = req.query.call_type;
-
-    if (callType !== undefined) {
-        if (
-            callType === "answered" ||
-            callType === "missed" ||
-            callType === "voicemail"
-        ) {
-            filters.call_type = callType;
-        } else {
-            res.status(400).json({
-                error: "Invalid call_type filter. Expected 'answered', 'missed', or 'voicemail'."
-            });
-            return;
-        }
+    if (parsedQuery.data.call_type !== undefined) {
+        filters.call_type = parsedQuery.data.call_type;
     }
 
-    const pageQuery = req.query.page;
-    const limitQuery = req.query.limit;
+    const { page, limit } = parsedQuery.data;
 
-    const page =
-        typeof pageQuery === "string" ? Number.parseInt(pageQuery, 10) : 1;
-
-    const limit =
-        typeof limitQuery === "string" ? Number.parseInt(limitQuery, 10) : 10;
-
-    if (!Number.isInteger(page) || page < 1) {
-        res.status(400).json({
-            error: "Invalid page. Expected a positive integer."
-        });
-        return;
-    }
-
-    if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
-        res.status(400).json({
-            error: "Invalid limit. Expected a positive integer between 1 and 50."
-        });
-        return;
-    }
-
-    const result = await getAllCalls(filters, { page, limit });
+    const result = await getAllCalls(userId, filters, { page, limit });
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -105,9 +101,10 @@ export const getCallByIdController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
-    const result = await getCallById(callId);
+    const result = await getCallById(userId, callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -123,9 +120,10 @@ export const archiveCallController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
-    const result = await archiveCall(callId);
+    const result = await archiveCall(userId, callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -141,9 +139,10 @@ export const unarchiveCallController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
-    const result = await unarchiveCall(callId);
+    const result = await unarchiveCall(userId, callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -159,6 +158,7 @@ export const addNoteToCallController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
     const content = req.body.content;
@@ -170,7 +170,7 @@ export const addNoteToCallController = async (
         return;
     }
 
-    const result = await addNoteToCall(callId, content);
+    const result = await addNoteToCall(userId, callId, content);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -186,9 +186,10 @@ export const deleteCallController = async (
     req: Request<CallIdParams>,
     res: Response
 ) => {
+    const userId = getAuthenticatedUserId(req);
     const callId = req.params.callId;
 
-    const result = await deleteCall(callId);
+    const result = await deleteCall(userId, callId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -204,7 +205,8 @@ export const archiveAllCallsController = async (
     _req: Request,
     res: Response
 ) => {
-    const result = await archiveAllCalls();
+    const userId = getAuthenticatedUserId(_req);
+    const result = await archiveAllCalls(userId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -220,7 +222,8 @@ export const unarchiveAllCallsController = async (
     _req: Request,
     res: Response
 ) => {
-    const result = await unarchiveAllCalls();
+    const userId = getAuthenticatedUserId(_req);
+    const result = await unarchiveAllCalls(userId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
@@ -233,7 +236,8 @@ export const unarchiveAllCallsController = async (
 };
 
 export const resetCallsController = async (_req: Request, res: Response) => {
-    const result = await resetCalls();
+    const userId = getAuthenticatedUserId(_req);
+    const result = await resetCalls(userId);
 
     if (!result.success) {
         res.status(result.statusCode).json({
