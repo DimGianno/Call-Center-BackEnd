@@ -47,7 +47,7 @@ const runSeed = async () => {
 
         console.log(`Seeded ${mockCalls.length} calls successfully`);
         console.log(`Demo user email: ${demoUserEmail}`);
-        console.log(`Demo user password: ${demoUserPassword}`);
+        console.log("Demo user password is configured in the seed script");
     } catch (error) {
         console.error("Failed to seed database", error);
         process.exitCode = 1;

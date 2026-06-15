@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { z } from "zod";
 import {
     getAllCalls,
     getCallById,
@@ -16,77 +17,70 @@ type CallIdParams = {
     callId: string;
 };
 
+const getCallsQuerySchema = z
+    .object({
+        is_archived: z.enum(["true", "false"]).optional(),
+        direction: z.enum(["inbound", "outbound"]).optional(),
+        call_type: z.enum(["answered", "missed", "voicemail"]).optional(),
+        page: z.coerce.number().int().min(1).optional().default(1),
+        limit: z.coerce.number().int().min(1).max(50).optional().default(10)
+    })
+    .strict();
+
+const getQueryValidationErrorMessage = (error: z.ZodError): string => {
+    const firstIssue = error.issues[0];
+    const fieldName = firstIssue?.path[0];
+
+    if (fieldName === "is_archived") {
+        return "Invalid is_archived filter. Expected 'true' or 'false'.";
+    }
+
+    if (fieldName === "direction") {
+        return "Invalid direction filter. Expected 'inbound' or 'outbound'.";
+    }
+
+    if (fieldName === "call_type") {
+        return "Invalid call_type filter. Expected 'answered', 'missed', or 'voicemail'.";
+    }
+
+    if (fieldName === "page") {
+        return "Invalid page. Expected a positive integer.";
+    }
+
+    if (fieldName === "limit") {
+        return "Invalid limit. Expected a positive integer between 1 and 50.";
+    }
+
+    return "Invalid query parameter.";
+};
+
 export const getAllCallsController = async (req: Request, res: Response) => {
     const userId = getAuthenticatedUserId(req);
+
+    const parsedQuery = getCallsQuerySchema.safeParse(req.query);
+
+    if (!parsedQuery.success) {
+        res.status(400).json({
+            error: getQueryValidationErrorMessage(parsedQuery.error)
+        });
+        return;
+    }
+
     const filters: CallFilters = {};
 
-    const isArchived = req.query.is_archived;
-
-    if (isArchived !== undefined) {
-        if (isArchived === "true") {
-            filters.is_archived = true;
-        } else if (isArchived === "false") {
-            filters.is_archived = false;
-        } else {
-            res.status(400).json({
-                error: "Invalid is_archived filter. Expected 'true' or 'false'."
-            });
-            return;
-        }
+    if (parsedQuery.data.is_archived !== undefined) {
+        filters.is_archived = parsedQuery.data.is_archived === "true";
     }
 
-    const direction = req.query.direction;
-
-    if (direction !== undefined) {
-        if (direction === "inbound" || direction === "outbound") {
-            filters.direction = direction;
-        } else {
-            res.status(400).json({
-                error: "Invalid direction filter. Expected 'inbound' or 'outbound'."
-            });
-            return;
-        }
+    if (parsedQuery.data.direction !== undefined) {
+        filters.direction = parsedQuery.data.direction;
     }
 
-    const callType = req.query.call_type;
-
-    if (callType !== undefined) {
-        if (
-            callType === "answered" ||
-            callType === "missed" ||
-            callType === "voicemail"
-        ) {
-            filters.call_type = callType;
-        } else {
-            res.status(400).json({
-                error: "Invalid call_type filter. Expected 'answered', 'missed', or 'voicemail'."
-            });
-            return;
-        }
+    if (parsedQuery.data.call_type !== undefined) {
+        filters.call_type = parsedQuery.data.call_type;
     }
 
-    const pageQuery = req.query.page;
-    const limitQuery = req.query.limit;
-
-    const page =
-        typeof pageQuery === "string" ? Number.parseInt(pageQuery, 10) : 1;
-
-    const limit =
-        typeof limitQuery === "string" ? Number.parseInt(limitQuery, 10) : 10;
-
-    if (!Number.isInteger(page) || page < 1) {
-        res.status(400).json({
-            error: "Invalid page. Expected a positive integer."
-        });
-        return;
-    }
-
-    if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
-        res.status(400).json({
-            error: "Invalid limit. Expected a positive integer between 1 and 50."
-        });
-        return;
-    }
+    const { page, limit } = parsedQuery.data;
 
     const result = await getAllCalls(userId, filters, { page, limit });
 
