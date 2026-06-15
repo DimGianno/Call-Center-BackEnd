@@ -83,18 +83,22 @@ src/
     swagger.ts
 
   controllers/
+    authControllers.ts
     callControllers.ts
 
   db/
     models/
       callDbModel.ts
+      userDbModel.ts
     mockCalls.ts
     seed.ts
 
   mappers/
     callMapper.ts
+    userMapper.ts
 
   middleware/
+    authMiddleware.ts
     errorHandler.ts
     notFoundHandler.ts
     requestLogger.ts
@@ -102,18 +106,24 @@ src/
   models/
     callModel.ts
     serviceTypes.ts
+    userModel.ts
 
   routes/
+    authRoutes.ts
     callRoutes.ts
 
   services/
+    authService.ts
     callService.ts
 
   utils/
+    jwt.ts
+    password.ts
     validators.ts
 
   __tests__/
-    calls.tests.ts
+    auth.test.ts
+    calls.test.ts
 ```
 
 ---
