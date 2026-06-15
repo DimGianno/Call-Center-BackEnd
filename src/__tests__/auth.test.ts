@@ -171,4 +171,16 @@ describe("JWT protected routes", () => {
         expect(response.status).toBe(401);
         expect(response.body.error).toBe("Token expired");
     });
+
+    test("returns 401 when the token user no longer exists", async () => {
+        const deletedUserId = new mongoose.Types.ObjectId().toString();
+        const token = signAccessToken(deletedUserId);
+
+        const response = await request(app)
+            .get("/calls")
+            .set("Authorization", `Bearer ${token}`);
+
+        expect(response.status).toBe(401);
+        expect(response.body.error).toBe("Invalid token");
+    });
 });

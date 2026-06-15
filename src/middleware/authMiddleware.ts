@@ -1,5 +1,6 @@
 import type { Request, RequestHandler } from "express";
 
+import { UserDbModel } from "../db/models/userDbModel.js";
 import { verifyAccessToken } from "../utils/jwt.js";
 import { isValidMongoObjectId } from "../utils/validators.js";
 
@@ -7,7 +8,7 @@ type RequestWithUserId = Request & {
     userId?: string;
 };
 
-export const requireAuth: RequestHandler = (req, res, next) => {
+export const requireAuth: RequestHandler = async (req, res, next) => {
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader?.startsWith("Bearer ")) {
@@ -36,6 +37,17 @@ export const requireAuth: RequestHandler = (req, res, next) => {
     }
 
     if (!isValidMongoObjectId(verificationResult.payload.sub)) {
+        res.status(401).json({
+            error: "Invalid token"
+        });
+        return;
+    }
+
+    const userExists = await UserDbModel.exists({
+        _id: verificationResult.payload.sub
+    });
+
+    if (!userExists) {
         res.status(401).json({
             error: "Invalid token"
         });
