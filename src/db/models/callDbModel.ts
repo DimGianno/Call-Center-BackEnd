@@ -87,4 +87,15 @@ const callSchema = new Schema<CallDocument>(
     }
 );
 
+callSchema.index(
+    {
+        user_id: 1,
+        is_archived: 1,
+        created_at: -1
+    },
+    {
+        name: "user_archive_created_at_idx"
+    }
+);
+
 export const CallDbModel = mongoose.model<CallDocument>("Call", callSchema);
