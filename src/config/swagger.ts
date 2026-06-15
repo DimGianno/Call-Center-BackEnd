@@ -1,13 +1,21 @@
 import swaggerJSDoc from "swagger-jsdoc";
 
 const localServerUrl = `http://localhost:${process.env.PORT || 3000}`;
-const stagingServerUrl = "https://staging-4b8t.onrender.com";
-const isStagingDeployment = process.env.NODE_ENV === "staging";
+const serverUrl = process.env.API_BASE_URL || localServerUrl;
 
-const serverUrl = isStagingDeployment ? stagingServerUrl : localServerUrl;
-const serverDescription = isStagingDeployment
-    ? "Staging server"
-    : "Local development server";
+const getServerDescription = (): string => {
+    if (process.env.NODE_ENV === "production") {
+        return "Production server";
+    }
+
+    if (process.env.NODE_ENV === "staging") {
+        return "Staging server";
+    }
+
+    return "Local development server";
+};
+
+const serverDescription = getServerDescription();
 
 export const swaggerSpec = swaggerJSDoc({
     definition: {

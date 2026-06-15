@@ -4,6 +4,8 @@ A backend API for a call center application built with **Node.js**, **Express**,
 
 Staging URL: https://staging-4b8t.onrender.com/
 
+Production URL: https://call-center-backend-7z8r.onrender.com/
+
 The API allows clients to manage call records, filter and paginate call lists, archive/unarchive calls, add notes to calls, delete calls, and seed sample data into the database.
 
 This project was built as part of a backend engineering learning assignment, with focus on REST API design, validation, error handling, persistent storage, testing, and CI/CD.
@@ -177,6 +179,7 @@ Add:
 PORT=3000
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
+API_BASE_URL=http://localhost:3000
 ```
 
 Make sure `.env` is included in `.gitignore` so your database password is not pushed to GitHub.
@@ -599,6 +602,10 @@ Staging API docs are available at:
 
 https://staging-4b8t.onrender.com/api-docs
 
+Production API docs are available at:
+
+https://call-center-backend-7z8r.onrender.com/api-docs
+
 The Swagger page documents the main API endpoints, including:
 
 - POST /auth/signup
@@ -641,11 +648,13 @@ A GitHub ruleset is also configured so the protected branch requires CI checks t
 
 ## Continuous Deployment
 
-The staging backend API is deployed on Render as a Web Service.
+The backend API is deployed on Render as Web Services.
 
 Staging URL: https://staging-4b8t.onrender.com/
 
-Render is connected to the GitHub repository and automatically redeploys the staging service when changes are pushed to the staging branch configured in Render.
+Production URL: https://call-center-backend-7z8r.onrender.com/
+
+Render is connected to the GitHub repository and automatically redeploys each service when changes are pushed to the branch configured in Render.
 
 Render uses the following commands:
 
@@ -658,12 +667,27 @@ The deployed service uses environment variables configured in Render, including:
 
 ```json
 NODE_VERSION=24
-NODE_ENV=staging
+NODE_ENV=<staging or production>
+API_BASE_URL=<deployed backend URL>
 MONGODB_URI=<MongoDB Atlas connection string>
 JWT_SECRET=<JWT signing secret>
 ```
 
-The .env file is not committed to GitHub. Staging environment variables are managed through Render's dashboard.
+For staging:
+
+```env
+NODE_ENV=staging
+API_BASE_URL=https://staging-4b8t.onrender.com
+```
+
+For production:
+
+```env
+NODE_ENV=production
+API_BASE_URL=https://call-center-backend-7z8r.onrender.com
+```
+
+The .env file is not committed to GitHub. Deployment environment variables are managed through Render's dashboard.
 
 The deployed API includes:
 
