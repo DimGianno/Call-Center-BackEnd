@@ -28,6 +28,11 @@ export const swaggerSpec = swaggerJSDoc({
         },
         components: {
             securitySchemes: {
+                cookieAuth: {
+                    type: "apiKey",
+                    in: "cookie",
+                    name: "session"
+                },
                 bearerAuth: {
                     type: "http",
                     scheme: "bearer",

@@ -88,6 +88,7 @@ const router = Router();
  *     tags:
  *       - Calls
  *     security:
+ *       - cookieAuth: []
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
@@ -170,6 +171,7 @@ router.get("/", getAllCallsController);
  *     tags:
  *       - Calls
  *     security:
+ *       - cookieAuth: []
  *       - bearerAuth: []
  *     responses:
  *       200:
@@ -197,6 +199,7 @@ router.patch("/archive-all", archiveAllCallsController);
  *     tags:
  *       - Calls
  *     security:
+ *       - cookieAuth: []
  *       - bearerAuth: []
  *     responses:
  *       200:
@@ -224,6 +227,7 @@ router.patch("/unarchive-all", unarchiveAllCallsController);
  *     tags:
  *       - Calls
  *     security:
+ *       - cookieAuth: []
  *       - bearerAuth: []
  *     responses:
  *       200:
@@ -254,6 +258,7 @@ router.post("/reset", resetCallsController);
  *     tags:
  *       - Calls
  *     security:
+ *       - cookieAuth: []
  *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"
@@ -288,6 +293,7 @@ router.get("/:callId", getCallByIdController);
  *     tags:
  *       - Calls
  *     security:
+ *       - cookieAuth: []
  *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"
@@ -322,6 +328,7 @@ router.patch("/:callId/archive", archiveCallController);
  *     tags:
  *       - Calls
  *     security:
+ *       - cookieAuth: []
  *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"
@@ -356,6 +363,7 @@ router.patch("/:callId/unarchive", unarchiveCallController);
  *     tags:
  *       - Calls
  *     security:
+ *       - cookieAuth: []
  *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"
@@ -402,6 +410,7 @@ router.post("/:callId/notes", addNoteToCallController);
  *     tags:
  *       - Calls
  *     security:
+ *       - cookieAuth: []
  *       - bearerAuth: []
  *     parameters:
  *       - $ref: "#/components/parameters/CallId"

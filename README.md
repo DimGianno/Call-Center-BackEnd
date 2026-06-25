@@ -25,6 +25,7 @@ This project was built as part of a backend engineering learning assignment, wit
 - Environment variable configuration
 - User signup and login
 - JWT authentication for protected API routes
+- Server-side session expiry with HttpOnly cookie sessions
 - User-owned call records
 
 ### Bonus / Extended Features
@@ -180,6 +181,8 @@ PORT=3000
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
 API_BASE_URL=http://localhost:3000
+FRONTEND_ORIGINS=http://localhost:5173
+SESSION_TTL_MINUTES=10
 ```
 
 Make sure `.env` is included in `.gitignore` so your database password is not pushed to GitHub.
@@ -260,12 +263,14 @@ npm run start
 
 ### Auth
 
-| Method | Endpoint       | Description                                 |
-| ------ | -------------- | ------------------------------------------- |
-| POST   | `/auth/signup` | Create a user and return a JWT access token |
-| POST   | `/auth/login`  | Log in a user and return a JWT access token |
+| Method | Endpoint        | Description                              |
+| ------ | --------------- | ---------------------------------------- |
+| POST   | `/auth/signup`  | Create a user and start a server session |
+| POST   | `/auth/login`   | Log in a user and start a server session |
+| POST   | `/auth/refresh` | Refresh the current cookie session       |
+| POST   | `/auth/logout`  | Delete the current cookie session        |
 
-Successful auth responses return:
+Successful signup and login responses set an HttpOnly `session` cookie and return:
 
 ```json
 {
@@ -275,21 +280,34 @@ Successful auth responses return:
         "email": "user@example.com",
         "created_at": "2026-01-01T10:00:00.000Z"
     },
-    "accessToken": "jwt-access-token"
+    "accessToken": "jwt-access-token",
+    "sessionExpiresAt": "2026-01-01T10:10:00.000Z"
 }
 ```
 
-Use the returned token for protected requests:
+Browser clients should send the cookie on protected requests:
+
+```ts
+fetch("https://call-center-backend-7z8r.onrender.com/calls", {
+    credentials: "include"
+});
+```
+
+Bearer tokens are still accepted as a temporary compatibility path for existing clients:
 
 ```http
 Authorization: Bearer jwt-access-token
 ```
 
+`POST /auth/refresh` requires a valid session cookie, extends the server-owned expiry, re-sets the cookie, and returns the safe user profile with `sessionExpiresAt`.
+
+`POST /auth/logout` deletes the current server session when present and clears the cookie.
+
 ---
 
 ### Calls
 
-All `/calls` endpoints require a JWT bearer token. Calls are scoped to the authenticated user.
+All `/calls` endpoints require either a valid HttpOnly `session` cookie or, temporarily, a legacy JWT bearer token. Calls are scoped to the authenticated user.
 
 | Method | Endpoint                   | Description                               |
 | ------ | -------------------------- | ----------------------------------------- |
@@ -328,7 +346,7 @@ All `/calls` endpoints require a JWT bearer token. Calls are scoped to the authe
 
 ```http
 GET /calls
-Authorization: Bearer jwt-access-token
+Cookie: session=server-owned-session-token
 ```
 
 ```http
@@ -560,6 +578,7 @@ The project includes automated API tests using Jest, Supertest, and MongoMemoryS
 The tests cover:
 
 - user signup and login
+- server-owned session cookies, expiry, refresh, and logout
 - JWT validation for protected routes
 - user-owned call access
 - GET /calls
@@ -671,7 +690,17 @@ NODE_ENV=<staging or production>
 API_BASE_URL=<deployed backend URL>
 MONGODB_URI=<MongoDB Atlas connection string>
 JWT_SECRET=<JWT signing secret>
+FRONTEND_ORIGINS=<comma-separated frontend origins>
+SESSION_TTL_MINUTES=10
 ```
+
+For Vercel frontend deployments calling Render backend deployments, include every deployed frontend origin that should be allowed to send credentials, for example:
+
+```env
+FRONTEND_ORIGINS=https://your-production-app.vercel.app,https://your-staging-app.vercel.app
+```
+
+In `staging` and `production`, session cookies are sent with `HttpOnly`, `Secure`, and `SameSite=None` so browsers can include them on cross-site frontend-to-backend requests.
 
 For staging:
 
@@ -744,7 +773,7 @@ The API maps MongoDB `_id` fields to `id` in responses so clients do not need to
 
 If I had more time, I would improve the project by adding:
 
-- Refresh tokens or longer-lived session management
+- Account-wide session revocation controls
 - More complete request validation across all endpoints
 - More advanced logging
 - Rate limiting

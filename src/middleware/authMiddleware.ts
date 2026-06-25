@@ -1,7 +1,12 @@
 import type { Request, RequestHandler } from "express";
 
 import { UserDbModel } from "../db/models/userDbModel.js";
+import { validateSessionToken } from "../services/sessionService.js";
 import { verifyAccessToken } from "../utils/jwt.js";
+import {
+    clearSessionCookie,
+    getSessionCookieValue
+} from "../utils/sessionCookie.js";
 import { isValidMongoObjectId } from "../utils/validators.js";
 
 type RequestWithUserId = Request & {
@@ -9,6 +14,25 @@ type RequestWithUserId = Request & {
 };
 
 export const requireAuth: RequestHandler = async (req, res, next) => {
+    const sessionToken = getSessionCookieValue(req);
+
+    if (sessionToken !== undefined) {
+        const sessionResult = await validateSessionToken(sessionToken);
+
+        if (!sessionResult.success) {
+            clearSessionCookie(res);
+            res.status(401).json({
+                error: sessionResult.error
+            });
+            return;
+        }
+
+        (req as RequestWithUserId).userId = sessionResult.userId;
+
+        next();
+        return;
+    }
+
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader?.startsWith("Bearer ")) {

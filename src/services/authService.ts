@@ -1,13 +1,14 @@
 import { UserDbModel } from "../db/models/userDbModel.js";
 import { mapUserDocumentToUser } from "../mappers/userMapper.js";
 import type {
-    AuthResponse,
+    AuthResult,
     LoginInput,
     SignupInput
 } from "../models/userModel.js";
 import type { ServiceResult } from "../models/serviceTypes.js";
 import { signAccessToken } from "../utils/jwt.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
+import { createSession } from "./sessionService.js";
 
 const normalizeEmail = (email: string): string => {
     return email.trim().toLowerCase();
@@ -23,7 +24,7 @@ const isDuplicateKeyError = (error: unknown): boolean => {
 
 export const signupUser = async (
     input: SignupInput
-): Promise<ServiceResult<AuthResponse>> => {
+): Promise<ServiceResult<AuthResult>> => {
     const email = normalizeEmail(input.email);
     const existingUser = await UserDbModel.findOne({ email });
 
@@ -43,12 +44,15 @@ export const signupUser = async (
             email,
             ...passwordFields
         });
+        const session = await createSession(user._id.toString());
 
         return {
             success: true,
             data: {
                 user: mapUserDocumentToUser(user),
-                accessToken: signAccessToken(user._id.toString())
+                accessToken: signAccessToken(user._id.toString()),
+                sessionToken: session.sessionToken,
+                sessionExpiresAt: session.expiresAt.toISOString()
             }
         };
     } catch (error) {
@@ -66,7 +70,7 @@ export const signupUser = async (
 
 export const loginUser = async (
     input: LoginInput
-): Promise<ServiceResult<AuthResponse>> => {
+): Promise<ServiceResult<AuthResult>> => {
     const email = normalizeEmail(input.email);
     const user = await UserDbModel.findOne({ email });
 
@@ -92,11 +96,15 @@ export const loginUser = async (
         };
     }
 
+    const session = await createSession(user._id.toString());
+
     return {
         success: true,
         data: {
             user: mapUserDocumentToUser(user),
-            accessToken: signAccessToken(user._id.toString())
+            accessToken: signAccessToken(user._id.toString()),
+            sessionToken: session.sessionToken,
+            sessionExpiresAt: session.expiresAt.toISOString()
         }
     };
 };

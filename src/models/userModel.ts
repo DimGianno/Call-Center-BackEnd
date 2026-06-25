@@ -8,6 +8,16 @@ export type User = {
 export type AuthResponse = {
     user: User;
     accessToken: string;
+    sessionExpiresAt: string;
+};
+
+export type AuthResult = AuthResponse & {
+    sessionToken: string;
+};
+
+export type SessionResponse = {
+    user: User;
+    sessionExpiresAt: string;
 };
 
 export type SignupInput = {

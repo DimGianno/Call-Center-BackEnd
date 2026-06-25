@@ -2,12 +2,19 @@ import { Router } from "express";
 
 import {
     loginController,
+    logoutController,
+    refreshController,
     signupController
 } from "../controllers/authControllers.js";
 
 /**
  * @openapi
  * components:
+ *   securitySchemes:
+ *     cookieAuth:
+ *       type: apiKey
+ *       in: cookie
+ *       name: session
  *   schemas:
  *     User:
  *       type: object
@@ -34,6 +41,10 @@ import {
  *         accessToken:
  *           type: string
  *           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         sessionExpiresAt:
+ *           type: string
+ *           format: date-time
+ *           example: "2026-01-01T10:10:00.000Z"
  */
 
 const router = Router();
@@ -118,5 +129,35 @@ router.post("/signup", signupController);
  *         description: Invalid credentials.
  */
 router.post("/login", loginController);
+
+/**
+ * @openapi
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh the current session
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Session refreshed successfully.
+ *       401:
+ *         description: Session cookie is missing, invalid, or expired.
+ */
+router.post("/refresh", refreshController);
+
+/**
+ * @openapi
+ * /auth/logout:
+ *   post:
+ *     summary: Log out the current session
+ *     tags:
+ *       - Auth
+ *     responses:
+ *       200:
+ *         description: Session cleared successfully.
+ */
+router.post("/logout", logoutController);
 
 export default router;
