@@ -20,6 +20,14 @@ export type SessionResponse = {
     sessionExpiresAt: string;
 };
 
+export type TutorialState = {
+    version: number;
+    hasSeenWelcome: boolean;
+    completedAt: string | null;
+    skippedAt: string | null;
+    completedTopics: string[];
+};
+
 export type SignupInput = {
     name: string;
     email: string;

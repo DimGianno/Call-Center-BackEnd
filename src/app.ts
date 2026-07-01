@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
 import callRoutes from "./routes/callRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import { requireAuth } from "./middleware/authMiddleware.js";
 import { notFoundHandler } from "./middleware/notFoundHandler.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -53,6 +54,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(requestLogger);
 
 app.use("/auth", authRoutes);
+app.use("/users", requireAuth, userRoutes);
 app.use("/calls", requireAuth, callRoutes);
 
 app.get("/", (_req, res) => {

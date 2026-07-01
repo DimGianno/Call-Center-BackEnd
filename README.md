@@ -26,6 +26,7 @@ This project was built as part of a backend engineering learning assignment, wit
 - User signup and login
 - JWT authentication for protected API routes
 - Server-side session expiry with HttpOnly cookie sessions
+- Authenticated tutorial preference API
 - User-owned call records
 
 ### Bonus / Extended Features
@@ -323,6 +324,40 @@ All `/calls` endpoints require either a valid HttpOnly `session` cookie or, temp
 
 ---
 
+### Users
+
+All `/users` endpoints require either a valid HttpOnly `session` cookie or, temporarily, a legacy JWT bearer token.
+
+| Method | Endpoint             | Description                                   |
+| ------ | -------------------- | --------------------------------------------- |
+| GET    | `/users/me/tutorial` | Get the current user's tutorial preference    |
+| PATCH  | `/users/me/tutorial` | Update the current user's tutorial preference |
+
+Tutorial preference responses return:
+
+```json
+{
+    "version": 1,
+    "hasSeenWelcome": false,
+    "completedAt": null,
+    "skippedAt": null,
+    "completedTopics": []
+}
+```
+
+`PATCH /users/me/tutorial` accepts partial updates for any tutorial field:
+
+```json
+{
+    "hasSeenWelcome": true,
+    "completedTopics": ["welcome"]
+}
+```
+
+The current tutorial version is `1`. Date fields must be ISO date strings or `null`.
+
+---
+
 ## Query Parameters for `GET /calls`
 
 `GET /calls` supports filtering and pagination.
@@ -579,6 +614,7 @@ The tests cover:
 
 - user signup and login
 - server-owned session cookies, expiry, refresh, and logout
+- authenticated tutorial preference reads and updates
 - JWT validation for protected routes
 - user-owned call access
 - GET /calls
@@ -638,6 +674,8 @@ The Swagger page documents the main API endpoints, including:
 - POST /calls/reset
 - POST /calls/:callId/notes
 - DELETE /calls/:callId
+- GET /users/me/tutorial
+- PATCH /users/me/tutorial
 
 ---
 
