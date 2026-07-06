@@ -28,6 +28,7 @@ This project was built as part of a backend engineering learning assignment, wit
 - Server-side session expiry with HttpOnly cookie sessions
 - Authenticated tutorial preference API
 - User-owned call records
+- Realtime same-account call updates with authenticated Server-Sent Events
 
 ### Bonus / Extended Features
 
@@ -184,6 +185,7 @@ JWT_SECRET=your_jwt_secret
 API_BASE_URL=http://localhost:3000
 FRONTEND_ORIGINS=http://localhost:5173
 SESSION_TTL_MINUTES=10
+AUTH_DEBUG_LOGS=false
 ```
 
 Make sure `.env` is included in `.gitignore` so your database password is not pushed to GitHub.
@@ -321,6 +323,39 @@ All `/calls` endpoints require either a valid HttpOnly `session` cookie or, temp
 | POST   | `/calls/reset`             | Reset current user's calls to sample data |
 | POST   | `/calls/:callId/notes`     | Add a note to a call                      |
 | DELETE | `/calls/:callId`           | Delete a call                             |
+
+---
+
+### Realtime Call Events
+
+The backend exposes an authenticated Server-Sent Events stream for same-account dashboard sync:
+
+| Method | Endpoint        | Description                                     |
+| ------ | --------------- | ----------------------------------------------- |
+| GET    | `/events/calls` | Stream call-change invalidation events for user |
+
+The stream requires the same authentication as protected API routes. Browser clients should connect
+with credentials included so the HttpOnly `session` cookie is sent.
+
+When a call mutation succeeds, the backend broadcasts a `calls:changed` event only to active SSE
+connections for the same authenticated user. Failed mutations do not broadcast.
+
+Event payload shape:
+
+```json
+{
+    "version": 1,
+    "action": "archive",
+    "callId": "665f1f4e91a5b6a4d1c8b123"
+}
+```
+
+`action` can be `archive`, `unarchive`, `delete`, `add_note`, `archive_all`, `unarchive_all`, or
+`reset`. Bulk actions and reset may omit `callId`.
+
+The current implementation stores SSE clients in memory, grouped by user ID. That is appropriate
+while the backend runs as a single Render web service instance. If the service later scales to
+multiple instances, the broadcaster should move to Redis pub/sub or another shared event bus.
 
 ---
 
@@ -627,6 +662,9 @@ The tests cover:
 - reset calls endpoint
 - adding notes
 - deleting calls
+- authenticated `/events/calls` SSE connections
+- realtime call-change broadcasts after successful mutations
+- no realtime broadcast after failed mutations
 - validation error cases
 
 Run tests:
@@ -730,6 +768,7 @@ MONGODB_URI=<MongoDB Atlas connection string>
 JWT_SECRET=<JWT signing secret>
 FRONTEND_ORIGINS=<comma-separated frontend origins>
 SESSION_TTL_MINUTES=10
+AUTH_DEBUG_LOGS=false
 ```
 
 For Vercel frontend deployments calling Render backend deployments, include every deployed frontend origin that should be allowed to send credentials, for example:
@@ -739,6 +778,18 @@ FRONTEND_ORIGINS=https://your-production-app.vercel.app,https://your-staging-app
 ```
 
 In `staging` and `production`, session cookies are sent with `HttpOnly`, `Secure`, and `SameSite=None` so browsers can include them on cross-site frontend-to-backend requests.
+
+The app also sets Express `trust proxy` for Render so secure cookie behavior is evaluated correctly
+behind Render's HTTPS proxy.
+
+`AUTH_DEBUG_LOGS=true` can be enabled temporarily in Render when diagnosing mobile/tablet cookie
+issues. It logs safe auth diagnostics such as origin, user agent, whether a Cookie header exists,
+whether the session cookie parsed, whether a session document was found, and whether Set-Cookie was
+sent. It does not log raw cookies or session tokens.
+
+For the Vercel-hosted frontend, the preferred production setup is to call the backend through the
+frontend's same-origin `/api/*` proxy. That keeps browser requests on the frontend origin and avoids
+mobile third-party-cookie blocking between `vercel.app` and `onrender.com`.
 
 For staging:
 
