@@ -3,6 +3,7 @@ import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
 import callRoutes from "./routes/callRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import { corsOptions } from "./config/cors.js";
 import { requireAuth } from "./middleware/authMiddleware.js";
 import { notFoundHandler } from "./middleware/notFoundHandler.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -11,44 +12,11 @@ import { requestLogger } from "./middleware/requestLogger.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 
-const PRODUCTION_NODE_ENVS = new Set(["production", "staging"]);
-
-const getAllowedFrontendOrigins = (): string[] => {
-    return (process.env.FRONTEND_ORIGINS ?? "")
-        .split(",")
-        .map((origin) => origin.trim())
-        .filter((origin) => origin.length > 0);
-};
-
-const isProductionLikeEnvironment = (): boolean => {
-    return PRODUCTION_NODE_ENVS.has(process.env.NODE_ENV ?? "");
-};
-
-const isOriginAllowed = (origin: string): boolean => {
-    const configuredOrigins = getAllowedFrontendOrigins();
-
-    if (configuredOrigins.includes(origin)) {
-        return true;
-    }
-
-    return !isProductionLikeEnvironment() && configuredOrigins.length === 0;
-};
-
 const app = express();
 
-app.use(
-    cors({
-        credentials: true,
-        origin: (origin, callback) => {
-            if (!origin || isOriginAllowed(origin)) {
-                callback(null, true);
-                return;
-            }
+app.set("trust proxy", 1);
 
-            callback(null, false);
-        }
-    })
-);
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use(requestLogger);

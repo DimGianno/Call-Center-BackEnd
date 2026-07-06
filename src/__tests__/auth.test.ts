@@ -24,6 +24,19 @@ type AuthResponseBody = {
 
 let mongoServer: MongoMemoryServer;
 
+const originalNodeEnv = process.env.NODE_ENV;
+const originalFrontendOrigins = process.env.FRONTEND_ORIGINS;
+const originalAuthDebugLogs = process.env.AUTH_DEBUG_LOGS;
+
+const restoreEnvValue = (name: string, value: string | undefined) => {
+    if (value === undefined) {
+        delete process.env[name];
+        return;
+    }
+
+    process.env[name] = value;
+};
+
 const getSetCookies = (response: Response): string[] => {
     const setCookieHeader = response.headers["set-cookie"];
 
@@ -54,6 +67,14 @@ const getSessionCookieHeader = (response: Response): string => {
     return getSessionSetCookie(response).split(";")[0];
 };
 
+const expectProductionSessionCookie = (cookie: string) => {
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("Secure");
+    expect(cookie).toContain("SameSite=None");
+    expect(cookie).toContain("Path=/");
+    expect(cookie).not.toMatch(/;\s*Domain=/i);
+};
+
 beforeAll(async () => {
     process.env.JWT_SECRET = "test-jwt-secret";
     mongoServer = await MongoMemoryServer.create();
@@ -66,9 +87,102 @@ beforeEach(async () => {
     await UserDbModel.deleteMany({});
 });
 
+afterEach(() => {
+    restoreEnvValue("NODE_ENV", originalNodeEnv);
+    restoreEnvValue("FRONTEND_ORIGINS", originalFrontendOrigins);
+    restoreEnvValue("AUTH_DEBUG_LOGS", originalAuthDebugLogs);
+});
+
 afterAll(async () => {
     await mongoose.disconnect();
     await mongoServer.stop();
+});
+
+describe("cross-site session cookie and CORS behavior", () => {
+    const allowedOrigin = "https://call-center-frontend-preview.vercel.app";
+    const disallowedOrigin = "https://not-the-frontend.example";
+
+    test("sets a secure SameSite=None host-only cookie in staging and production", async () => {
+        process.env.NODE_ENV = "staging";
+
+        const signupResponse = await request(app).post("/auth/signup").send({
+            name: "Cross Site User",
+            email: "cross-site@example.com",
+            password: "password123"
+        });
+
+        expect(signupResponse.status).toBe(201);
+        expectProductionSessionCookie(getSessionSetCookie(signupResponse));
+
+        process.env.NODE_ENV = "production";
+
+        const loginResponse = await request(app).post("/auth/login").send({
+            email: "cross-site@example.com",
+            password: "password123"
+        });
+
+        expect(loginResponse.status).toBe(200);
+        expectProductionSessionCookie(getSessionSetCookie(loginResponse));
+    });
+
+    test("allows an exact configured frontend origin with credentials", async () => {
+        process.env.NODE_ENV = "production";
+        process.env.FRONTEND_ORIGINS = ` ${allowedOrigin}/,https://other-preview.vercel.app `;
+
+        const response = await request(app)
+            .options("/auth/login")
+            .set("Origin", allowedOrigin)
+            .set("Access-Control-Request-Method", "POST")
+            .set("Access-Control-Request-Headers", "content-type");
+
+        expect(response.status).toBe(204);
+        expect(response.headers["access-control-allow-origin"]).toBe(
+            allowedOrigin
+        );
+        expect(response.headers["access-control-allow-credentials"]).toBe(
+            "true"
+        );
+    });
+
+    test("does not approve a disallowed frontend origin for credentialed CORS", async () => {
+        process.env.NODE_ENV = "production";
+        process.env.FRONTEND_ORIGINS = allowedOrigin;
+
+        const response = await request(app)
+            .options("/auth/login")
+            .set("Origin", disallowedOrigin)
+            .set("Access-Control-Request-Method", "POST")
+            .set("Access-Control-Request-Headers", "content-type");
+
+        expect(response.headers["access-control-allow-origin"]).toBeUndefined();
+        expect(
+            response.headers["access-control-allow-credentials"]
+        ).toBeUndefined();
+    });
+
+    test.each([
+        ["/auth/signup", "POST"],
+        ["/auth/login", "POST"],
+        ["/auth/refresh", "POST"],
+        ["/calls", "GET"]
+    ])("allows credentialed preflight for %s", async (path, method) => {
+        process.env.NODE_ENV = "production";
+        process.env.FRONTEND_ORIGINS = allowedOrigin;
+
+        const response = await request(app)
+            .options(path)
+            .set("Origin", allowedOrigin)
+            .set("Access-Control-Request-Method", method)
+            .set("Access-Control-Request-Headers", "content-type");
+
+        expect(response.status).toBe(204);
+        expect(response.headers["access-control-allow-origin"]).toBe(
+            allowedOrigin
+        );
+        expect(response.headers["access-control-allow-credentials"]).toBe(
+            "true"
+        );
+    });
 });
 
 describe("POST /auth/signup", () => {

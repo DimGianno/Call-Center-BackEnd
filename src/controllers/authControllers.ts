@@ -9,6 +9,7 @@ import {
     getSessionCookieValue,
     setSessionCookie
 } from "../utils/sessionCookie.js";
+import { hasSetCookieHeader, logAuthDebug } from "../utils/authDebugLogger.js";
 
 const signupRequestSchema = z
     .object({
@@ -43,6 +44,11 @@ export const signupController = async (req: Request, res: Response) => {
     const parsedBody = signupRequestSchema.safeParse(req.body);
 
     if (!parsedBody.success) {
+        logAuthDebug(req, res, "POST /auth/signup", {
+            outcome: "invalid_request",
+            sessionDocumentFound: false,
+            setCookieSent: false
+        });
         res.status(400).json({
             error: getValidationErrorMessage(parsedBody.error)
         });
@@ -52,6 +58,11 @@ export const signupController = async (req: Request, res: Response) => {
     const result = await signupUser(parsedBody.data);
 
     if (!result.success) {
+        logAuthDebug(req, res, "POST /auth/signup", {
+            outcome: result.error,
+            sessionDocumentFound: false,
+            setCookieSent: false
+        });
         res.status(result.statusCode).json({
             error: result.error
         });
@@ -64,6 +75,12 @@ export const signupController = async (req: Request, res: Response) => {
         new Date(result.data.sessionExpiresAt)
     );
 
+    logAuthDebug(req, res, "POST /auth/signup", {
+        outcome: "signup_success",
+        sessionDocumentFound: true,
+        setCookieSent: hasSetCookieHeader(res)
+    });
+
     res.status(201).json(getAuthResponseBody(result.data));
 };
 
@@ -71,6 +88,11 @@ export const loginController = async (req: Request, res: Response) => {
     const parsedBody = loginRequestSchema.safeParse(req.body);
 
     if (!parsedBody.success) {
+        logAuthDebug(req, res, "POST /auth/login", {
+            outcome: "invalid_request",
+            sessionDocumentFound: false,
+            setCookieSent: false
+        });
         res.status(400).json({
             error: getValidationErrorMessage(parsedBody.error)
         });
@@ -80,6 +102,11 @@ export const loginController = async (req: Request, res: Response) => {
     const result = await loginUser(parsedBody.data);
 
     if (!result.success) {
+        logAuthDebug(req, res, "POST /auth/login", {
+            outcome: result.error,
+            sessionDocumentFound: false,
+            setCookieSent: false
+        });
         res.status(result.statusCode).json({
             error: result.error
         });
@@ -92,6 +119,12 @@ export const loginController = async (req: Request, res: Response) => {
         new Date(result.data.sessionExpiresAt)
     );
 
+    logAuthDebug(req, res, "POST /auth/login", {
+        outcome: "login_success",
+        sessionDocumentFound: true,
+        setCookieSent: hasSetCookieHeader(res)
+    });
+
     res.status(200).json(getAuthResponseBody(result.data));
 };
 
@@ -99,6 +132,11 @@ export const refreshController = async (req: Request, res: Response) => {
     const sessionToken = getSessionCookieValue(req);
 
     if (sessionToken === undefined) {
+        logAuthDebug(req, res, "POST /auth/refresh", {
+            outcome: "missing_session_cookie",
+            sessionDocumentFound: false,
+            setCookieSent: false
+        });
         res.status(401).json({
             error: "Session cookie is required"
         });
@@ -109,6 +147,11 @@ export const refreshController = async (req: Request, res: Response) => {
 
     if (!result.success) {
         clearSessionCookie(res);
+        logAuthDebug(req, res, "POST /auth/refresh", {
+            outcome: result.error,
+            sessionDocumentFound: result.sessionDocumentFound,
+            setCookieSent: hasSetCookieHeader(res)
+        });
         res.status(result.statusCode).json({
             error: result.error
         });
@@ -120,6 +163,12 @@ export const refreshController = async (req: Request, res: Response) => {
         result.data.sessionToken,
         new Date(result.data.sessionExpiresAt)
     );
+
+    logAuthDebug(req, res, "POST /auth/refresh", {
+        outcome: "refresh_success",
+        sessionDocumentFound: result.sessionDocumentFound,
+        setCookieSent: hasSetCookieHeader(res)
+    });
 
     res.status(200).json({
         user: result.data.user,

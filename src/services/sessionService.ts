@@ -4,7 +4,6 @@ import { Types } from "mongoose";
 import { SessionDbModel } from "../db/models/sessionDbModel.js";
 import { UserDbModel } from "../db/models/userDbModel.js";
 import { mapUserDocumentToUser } from "../mappers/userMapper.js";
-import type { ServiceResult } from "../models/serviceTypes.js";
 import type { SessionResponse } from "../models/userModel.js";
 
 const DEFAULT_SESSION_TTL_MINUTES = 10;
@@ -21,15 +20,30 @@ type SessionValidationResult =
           sessionId: string;
           userId: string;
           expiresAt: Date;
+          sessionDocumentFound: true;
       }
     | {
           success: false;
           error: string;
+          sessionDocumentFound: boolean;
       };
 
 export type SessionRefreshResult = SessionResponse & {
     sessionToken: string;
 };
+
+type SessionRefreshServiceResult =
+    | {
+          success: true;
+          data: SessionRefreshResult;
+          sessionDocumentFound: true;
+      }
+    | {
+          success: false;
+          statusCode: number;
+          error: string;
+          sessionDocumentFound: boolean;
+      };
 
 export const getSessionTtlMilliseconds = (): number => {
     const configuredTtl = Number(process.env.SESSION_TTL_MINUTES);
@@ -77,7 +91,8 @@ export const validateSessionToken = async (
     if (!session) {
         return {
             success: false,
-            error: "Invalid session"
+            error: "Invalid session",
+            sessionDocumentFound: false
         };
     }
 
@@ -88,7 +103,8 @@ export const validateSessionToken = async (
 
         return {
             success: false,
-            error: "Session expired"
+            error: "Session expired",
+            sessionDocumentFound: true
         };
     }
 
@@ -103,7 +119,8 @@ export const validateSessionToken = async (
 
         return {
             success: false,
-            error: "Invalid session"
+            error: "Invalid session",
+            sessionDocumentFound: true
         };
     }
 
@@ -111,20 +128,22 @@ export const validateSessionToken = async (
         success: true,
         sessionId: session._id.toString(),
         userId: session.user_id.toString(),
-        expiresAt: session.expires_at
+        expiresAt: session.expires_at,
+        sessionDocumentFound: true
     };
 };
 
 export const refreshSession = async (
     sessionToken: string
-): Promise<ServiceResult<SessionRefreshResult>> => {
+): Promise<SessionRefreshServiceResult> => {
     const validationResult = await validateSessionToken(sessionToken);
 
     if (!validationResult.success) {
         return {
             success: false,
             statusCode: 401,
-            error: validationResult.error
+            error: validationResult.error,
+            sessionDocumentFound: validationResult.sessionDocumentFound
         };
     }
 
@@ -148,7 +167,8 @@ export const refreshSession = async (
         return {
             success: false,
             statusCode: 401,
-            error: "Session expired"
+            error: "Session expired",
+            sessionDocumentFound: validationResult.sessionDocumentFound
         };
     }
 
@@ -162,12 +182,14 @@ export const refreshSession = async (
         return {
             success: false,
             statusCode: 401,
-            error: "Invalid session"
+            error: "Invalid session",
+            sessionDocumentFound: true
         };
     }
 
     return {
         success: true,
+        sessionDocumentFound: true,
         data: {
             user: mapUserDocumentToUser(user),
             sessionToken,
