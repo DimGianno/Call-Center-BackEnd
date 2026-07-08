@@ -1,13 +1,22 @@
 import { UserDbModel } from "../db/models/userDbModel.js";
 import { mapUserDocumentToUser } from "../mappers/userMapper.js";
 import type {
-    AuthResponse,
+    AuthResult,
     LoginInput,
     SignupInput
 } from "../models/userModel.js";
 import type { ServiceResult } from "../models/serviceTypes.js";
 import { signAccessToken } from "../utils/jwt.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
+import {
+    EMAIL_VERIFICATION_REQUIRED_ERROR,
+    ensureEmailVerificationDeadline,
+    getEmailVerificationRequiredAt,
+    getEmailVerificationStatus,
+    isEmailVerificationGracePeriodExpired,
+    sendVerificationEmailForUser
+} from "./emailVerificationService.js";
+import { createSession } from "./sessionService.js";
 
 const normalizeEmail = (email: string): string => {
     return email.trim().toLowerCase();
@@ -23,7 +32,7 @@ const isDuplicateKeyError = (error: unknown): boolean => {
 
 export const signupUser = async (
     input: SignupInput
-): Promise<ServiceResult<AuthResponse>> => {
+): Promise<ServiceResult<AuthResult>> => {
     const email = normalizeEmail(input.email);
     const existingUser = await UserDbModel.findOne({ email });
 
@@ -41,14 +50,23 @@ export const signupUser = async (
         const user = await UserDbModel.create({
             name: input.name.trim(),
             email,
+            email_verification_required_at: getEmailVerificationRequiredAt(),
             ...passwordFields
+        });
+        const session = await createSession(user._id.toString());
+        await sendVerificationEmailForUser(user).catch((error) => {
+            console.warn("Failed to create or send verification email.", error);
+            return false;
         });
 
         return {
             success: true,
             data: {
                 user: mapUserDocumentToUser(user),
-                accessToken: signAccessToken(user._id.toString())
+                accessToken: signAccessToken(user._id.toString()),
+                emailVerification: getEmailVerificationStatus(user),
+                sessionToken: session.sessionToken,
+                sessionExpiresAt: session.expiresAt.toISOString()
             }
         };
     } catch (error) {
@@ -66,7 +84,7 @@ export const signupUser = async (
 
 export const loginUser = async (
     input: LoginInput
-): Promise<ServiceResult<AuthResponse>> => {
+): Promise<ServiceResult<AuthResult>> => {
     const email = normalizeEmail(input.email);
     const user = await UserDbModel.findOne({ email });
 
@@ -77,6 +95,8 @@ export const loginUser = async (
             error: "Invalid email or password"
         };
     }
+
+    await ensureEmailVerificationDeadline(user);
 
     const isPasswordValid = await verifyPassword(
         input.password,
@@ -92,11 +112,24 @@ export const loginUser = async (
         };
     }
 
+    if (isEmailVerificationGracePeriodExpired(user)) {
+        return {
+            success: false,
+            statusCode: 403,
+            error: EMAIL_VERIFICATION_REQUIRED_ERROR
+        };
+    }
+
+    const session = await createSession(user._id.toString());
+
     return {
         success: true,
         data: {
             user: mapUserDocumentToUser(user),
-            accessToken: signAccessToken(user._id.toString())
+            accessToken: signAccessToken(user._id.toString()),
+            emailVerification: getEmailVerificationStatus(user),
+            sessionToken: session.sessionToken,
+            sessionExpiresAt: session.expiresAt.toISOString()
         }
     };
 };

@@ -1,10 +1,13 @@
 import request from "supertest";
+import http, { type IncomingMessage } from "http";
+import type { AddressInfo } from "net";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 
 import app from "../app.js";
 import { CallDbModel } from "../db/models/callDbModel.js";
 import { UserDbModel, type UserDocument } from "../db/models/userDbModel.js";
+import { getCallEventClientCount } from "../services/callEventsService.js";
 import { signAccessToken } from "../utils/jwt.js";
 
 type CallResponse = {
@@ -39,6 +42,120 @@ const postWithAuth = (url: string) => {
 
 const deleteWithAuth = (url: string) => {
     return request(app).delete(url).set("Authorization", authHeader);
+};
+
+type EventStreamTestClient = {
+    chunks: string[];
+    waitForText: (text: string) => Promise<string>;
+};
+
+const withCallEventStream = async (
+    runTest: (client: EventStreamTestClient) => Promise<void>
+) => {
+    const server = app.listen(0);
+    const { port } = server.address() as AddressInfo;
+    const chunks: string[] = [];
+    const waiters: Array<{
+        text: string;
+        resolve: (streamText: string) => void;
+    }> = [];
+
+    let eventResponse: IncomingMessage;
+
+    const requestReady = new Promise<void>((resolve, reject) => {
+        const eventRequest = http.request(
+            {
+                hostname: "127.0.0.1",
+                port,
+                path: "/events/calls",
+                headers: {
+                    Authorization: authHeader
+                }
+            },
+            (response) => {
+                eventResponse = response;
+                response.setEncoding("utf8");
+
+                expect(response.statusCode).toBe(200);
+                expect(response.headers["content-type"]).toContain(
+                    "text/event-stream"
+                );
+                expect(response.headers["cache-control"]).toContain("no-cache");
+
+                response.on("data", (chunk: string) => {
+                    chunks.push(chunk);
+                    const streamText = chunks.join("");
+
+                    for (const waiter of [...waiters]) {
+                        if (streamText.includes(waiter.text)) {
+                            waiter.resolve(streamText);
+                            waiters.splice(waiters.indexOf(waiter), 1);
+                        }
+                    }
+
+                    if (chunk.includes(": connected")) {
+                        resolve();
+                    }
+                });
+            }
+        );
+
+        eventRequest.on("error", reject);
+        eventRequest.end();
+    });
+
+    const waitForText = (text: string): Promise<string> => {
+        const streamText = chunks.join("");
+
+        if (streamText.includes(text)) {
+            return Promise.resolve(streamText);
+        }
+
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error(`Expected SSE chunk containing ${text}`));
+            }, 1000);
+
+            waiters.push({
+                text,
+                resolve: (chunk) => {
+                    clearTimeout(timeout);
+                    resolve(chunk);
+                }
+            });
+        });
+    };
+
+    try {
+        await requestReady;
+        await runTest({ chunks, waitForText });
+    } finally {
+        eventResponse!.destroy();
+        await new Promise<void>((resolve) => {
+            server.close(() => resolve());
+        });
+    }
+};
+
+const waitForExpectation = async (expectation: () => void) => {
+    const deadline = Date.now() + 1000;
+    let lastError: unknown;
+
+    while (Date.now() < deadline) {
+        try {
+            expectation();
+            return;
+        } catch (error) {
+            lastError = error;
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+    }
+
+    try {
+        expectation();
+    } catch {
+        throw lastError;
+    }
 };
 
 beforeAll(async () => {
@@ -537,5 +654,57 @@ describe("DELETE /calls/:callId", () => {
         const response = await deleteWithAuth("/calls/999");
 
         expect(response.status).toBe(400);
+    });
+});
+
+describe("GET /events/calls", () => {
+    test("returns 401 when unauthenticated", async () => {
+        const response = await request(app).get("/events/calls");
+
+        expect(response.status).toBe(401);
+    });
+
+    test("opens an authenticated call event stream", async () => {
+        await withCallEventStream(async ({ chunks }) => {
+            expect(chunks.some((chunk) => chunk.includes(": connected"))).toBe(
+                true
+            );
+            expect(getCallEventClientCount(primaryUser._id.toString())).toBe(1);
+        });
+
+        await waitForExpectation(() => {
+            expect(getCallEventClientCount(primaryUser._id.toString())).toBe(0);
+        });
+    });
+
+    test("broadcasts a calls:changed event after a successful mutation", async () => {
+        const callId = seededCalls[0]._id.toString();
+
+        await withCallEventStream(async ({ waitForText }) => {
+            const response = await patchWithAuth(`/calls/${callId}/archive`);
+
+            expect(response.status).toBe(200);
+
+            const eventChunk = await waitForText(`"callId":"${callId}"`);
+
+            expect(eventChunk).toContain('"version":1');
+            expect(eventChunk).toContain('"action":"archive"');
+            expect(eventChunk).toContain(`"callId":"${callId}"`);
+        });
+    });
+
+    test("does not broadcast after a failed mutation", async () => {
+        const callId = seededCalls[2]._id.toString();
+
+        await withCallEventStream(async ({ chunks }) => {
+            const response = await patchWithAuth(`/calls/${callId}/archive`);
+
+            expect(response.status).toBe(400);
+
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            expect(
+                chunks.some((chunk) => chunk.includes("event: calls:changed"))
+            ).toBe(false);
+        });
     });
 });

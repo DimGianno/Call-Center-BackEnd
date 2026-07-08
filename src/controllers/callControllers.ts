@@ -13,6 +13,7 @@ import {
 } from "../services/callService.js";
 import type { CallFilters } from "../models/callModel.js";
 import { getAuthenticatedUserId } from "../middleware/authMiddleware.js";
+import { broadcastCallChange } from "../services/callEventsService.js";
 type CallIdParams = {
     callId: string;
 };
@@ -132,6 +133,8 @@ export const archiveCallController = async (
         return;
     }
 
+    broadcastCallChange(userId, "archive", callId);
+
     res.status(200).json(result.data);
 };
 
@@ -150,6 +153,8 @@ export const unarchiveCallController = async (
         });
         return;
     }
+
+    broadcastCallChange(userId, "unarchive", callId);
 
     res.status(200).json(result.data);
 };
@@ -179,6 +184,8 @@ export const addNoteToCallController = async (
         return;
     }
 
+    broadcastCallChange(userId, "add_note", callId);
+
     res.status(201).json(result.data);
 };
 
@@ -198,6 +205,8 @@ export const deleteCallController = async (
         return;
     }
 
+    broadcastCallChange(userId, "delete", callId);
+
     res.status(200).json(result.data);
 };
 
@@ -214,6 +223,8 @@ export const archiveAllCallsController = async (
         });
         return;
     }
+
+    broadcastCallChange(userId, "archive_all");
 
     res.status(200).json(result.data);
 };
@@ -232,6 +243,8 @@ export const unarchiveAllCallsController = async (
         return;
     }
 
+    broadcastCallChange(userId, "unarchive_all");
+
     res.status(200).json(result.data);
 };
 
@@ -245,6 +258,8 @@ export const resetCallsController = async (_req: Request, res: Response) => {
         });
         return;
     }
+
+    broadcastCallChange(userId, "reset");
 
     res.status(200).json(result.data);
 };
