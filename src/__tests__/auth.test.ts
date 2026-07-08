@@ -1,10 +1,13 @@
 import request, { type Response } from "supertest";
+import { jest } from "@jest/globals";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 
 import app from "../app.js";
+import { EmailVerificationTokenDbModel } from "../db/models/emailVerificationTokenDbModel.js";
 import { SessionDbModel } from "../db/models/sessionDbModel.js";
 import { UserDbModel } from "../db/models/userDbModel.js";
+import { hashEmailVerificationToken } from "../services/emailVerificationService.js";
 import { hashSessionToken } from "../services/sessionService.js";
 import { signAccessToken } from "../utils/jwt.js";
 import { SESSION_COOKIE_NAME } from "../utils/sessionCookie.js";
@@ -14,11 +17,20 @@ type AuthResponseBody = {
         id: string;
         name: string;
         email: string;
+        email_verified_at?: string | null;
+        email_verification_required_at?: string | null;
+        email_verification_sent_at?: string | null;
         created_at: string;
         password_hash?: string;
         password_salt?: string;
     };
     accessToken: string;
+    emailVerification: {
+        verified: boolean;
+        verifiedAt: string | null;
+        requiredAt: string | null;
+        gracePeriodExpired: boolean;
+    };
     sessionExpiresAt: string;
 };
 
@@ -27,6 +39,14 @@ let mongoServer: MongoMemoryServer;
 const originalNodeEnv = process.env.NODE_ENV;
 const originalFrontendOrigins = process.env.FRONTEND_ORIGINS;
 const originalAuthDebugLogs = process.env.AUTH_DEBUG_LOGS;
+const originalResendApiKey = process.env.RESEND_API_KEY;
+const originalEmailFrom = process.env.EMAIL_FROM;
+const originalFrontendPublicUrl = process.env.FRONTEND_PUBLIC_URL;
+const originalVerificationGraceDays = process.env.EMAIL_VERIFICATION_GRACE_DAYS;
+const originalVerificationTokenTtlMinutes =
+    process.env.EMAIL_VERIFICATION_TOKEN_TTL_MINUTES;
+const originalVerificationResendCooldownSeconds =
+    process.env.EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS;
 
 const restoreEnvValue = (name: string, value: string | undefined) => {
     if (value === undefined) {
@@ -75,6 +95,26 @@ const expectProductionSessionCookie = (cookie: string) => {
     expect(cookie).not.toMatch(/;\s*Domain=/i);
 };
 
+const mockResendEmail = () => {
+    process.env.RESEND_API_KEY = "test-resend-key";
+    process.env.EMAIL_FROM = "Call Center <verify@example.com>";
+    process.env.FRONTEND_PUBLIC_URL = "https://frontend.example.com";
+
+    return jest.spyOn(global, "fetch").mockResolvedValue(
+        new Response(
+            JSON.stringify({
+                id: "email-id"
+            }),
+            {
+                status: 200,
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            }
+        )
+    );
+};
+
 beforeAll(async () => {
     process.env.JWT_SECRET = "test-jwt-secret";
     mongoServer = await MongoMemoryServer.create();
@@ -83,6 +123,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+    jest.restoreAllMocks();
+    await EmailVerificationTokenDbModel.deleteMany({});
     await SessionDbModel.deleteMany({});
     await UserDbModel.deleteMany({});
 });
@@ -91,6 +133,21 @@ afterEach(() => {
     restoreEnvValue("NODE_ENV", originalNodeEnv);
     restoreEnvValue("FRONTEND_ORIGINS", originalFrontendOrigins);
     restoreEnvValue("AUTH_DEBUG_LOGS", originalAuthDebugLogs);
+    restoreEnvValue("RESEND_API_KEY", originalResendApiKey);
+    restoreEnvValue("EMAIL_FROM", originalEmailFrom);
+    restoreEnvValue("FRONTEND_PUBLIC_URL", originalFrontendPublicUrl);
+    restoreEnvValue(
+        "EMAIL_VERIFICATION_GRACE_DAYS",
+        originalVerificationGraceDays
+    );
+    restoreEnvValue(
+        "EMAIL_VERIFICATION_TOKEN_TTL_MINUTES",
+        originalVerificationTokenTtlMinutes
+    );
+    restoreEnvValue(
+        "EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS",
+        originalVerificationResendCooldownSeconds
+    );
 });
 
 afterAll(async () => {
@@ -216,12 +273,45 @@ describe("POST /auth/signup", () => {
         expect(storedUser).not.toBeNull();
         expect(storedUser?.password_hash).not.toBe("password123");
         expect(storedUser?.password_salt).toBeTruthy();
+        expect(storedUser?.email_verified_at).toBeNull();
+        expect(storedUser?.email_verification_required_at).toBeInstanceOf(Date);
+        expect(responseBody.emailVerification.verified).toBe(false);
+        expect(responseBody.emailVerification.requiredAt).toBeTruthy();
+        expect(responseBody.emailVerification.gracePeriodExpired).toBe(false);
         expect(storedSession).not.toBeNull();
         expect(storedSession?.token_hash).toHaveLength(64);
         expect(storedSession?.expires_at.toISOString()).toBe(
             responseBody.sessionExpiresAt
         );
         expect(sessionSetCookie).toContain("HttpOnly");
+    });
+
+    test("creates a hashed email verification token and attempts to send email", async () => {
+        const fetchMock = mockResendEmail();
+
+        const response = await request(app).post("/auth/signup").send({
+            name: "Verify User",
+            email: "verify@example.com",
+            password: "password123"
+        });
+        const storedUser = await UserDbModel.findOne({
+            email: "verify@example.com"
+        });
+        const verificationToken = await EmailVerificationTokenDbModel.findOne({
+            user_id: storedUser?._id
+        });
+
+        expect(response.status).toBe(201);
+        expect(verificationToken).not.toBeNull();
+        expect(verificationToken?.token_hash).toHaveLength(64);
+        expect(verificationToken?.used_at).toBeNull();
+        expect(storedUser?.email_verification_sent_at).toBeInstanceOf(Date);
+        expect(fetchMock).toHaveBeenCalledWith(
+            "https://api.resend.com/emails",
+            expect.objectContaining({
+                method: "POST"
+            })
+        );
     });
 
     test("rejects duplicate emails after normalization", async () => {
@@ -250,6 +340,90 @@ describe("POST /auth/signup", () => {
         });
 
         expect(response.status).toBe(400);
+    });
+});
+
+describe("email verification", () => {
+    test("verifies a valid token once", async () => {
+        const user = await UserDbModel.create({
+            name: "Verify Token User",
+            email: "verify-token@example.com",
+            password_hash: "hash",
+            password_salt: "salt",
+            email_verification_required_at: new Date(Date.now() + 1000)
+        });
+        const token = "valid-verification-token";
+
+        await EmailVerificationTokenDbModel.create({
+            user_id: user._id,
+            token_hash: hashEmailVerificationToken(token),
+            expires_at: new Date(Date.now() + 60_000)
+        });
+
+        const response = await request(app)
+            .post("/auth/verify-email")
+            .send({ token });
+        const secondResponse = await request(app)
+            .post("/auth/verify-email")
+            .send({ token });
+        const storedUser = await UserDbModel.findById(user._id);
+
+        expect(response.status).toBe(200);
+        expect(response.body.emailVerification.verified).toBe(true);
+        expect(storedUser?.email_verified_at).toBeInstanceOf(Date);
+        expect(storedUser?.email_verification_required_at).toBeNull();
+        expect(secondResponse.status).toBe(400);
+    });
+
+    test("rejects expired or invalid verification tokens", async () => {
+        const user = await UserDbModel.create({
+            name: "Expired Token User",
+            email: "expired-token@example.com",
+            password_hash: "hash",
+            password_salt: "salt",
+            email_verification_required_at: new Date(Date.now() + 1000)
+        });
+
+        await EmailVerificationTokenDbModel.create({
+            user_id: user._id,
+            token_hash: hashEmailVerificationToken("expired-token"),
+            expires_at: new Date(Date.now() - 1000)
+        });
+
+        const expiredResponse = await request(app)
+            .post("/auth/verify-email")
+            .send({ token: "expired-token" });
+        const invalidResponse = await request(app)
+            .post("/auth/verify-email")
+            .send({ token: "missing-token" });
+
+        expect(expiredResponse.status).toBe(400);
+        expect(invalidResponse.status).toBe(400);
+    });
+
+    test("resend endpoint is generic and enforces cooldown", async () => {
+        mockResendEmail();
+
+        const signupResponse = await request(app).post("/auth/signup").send({
+            name: "Resend User",
+            email: "resend@example.com",
+            password: "password123"
+        });
+        const sessionCookie = getSessionCookieHeader(signupResponse);
+        const tokenCountBefore =
+            await EmailVerificationTokenDbModel.countDocuments({});
+
+        const response = await request(app)
+            .post("/auth/resend-verification")
+            .set("Cookie", sessionCookie);
+        const tokenCountAfter =
+            await EmailVerificationTokenDbModel.countDocuments({});
+
+        expect(response.status).toBe(200);
+        expect(response.body.message).toContain(
+            "If this account needs verification"
+        );
+        expect(tokenCountAfter).toBe(tokenCountBefore);
     });
 });
 
@@ -301,6 +475,30 @@ describe("POST /auth/login", () => {
         });
 
         expect(response.status).toBe(401);
+    });
+
+    test("returns 403 when an unverified user's grace period has expired", async () => {
+        await request(app).post("/auth/signup").send({
+            name: "Expired Verification User",
+            email: "expired-verification@example.com",
+            password: "password123"
+        });
+        await UserDbModel.updateOne(
+            {
+                email: "expired-verification@example.com"
+            },
+            {
+                email_verification_required_at: new Date(Date.now() - 1000)
+            }
+        );
+
+        const response = await request(app).post("/auth/login").send({
+            email: "expired-verification@example.com",
+            password: "password123"
+        });
+
+        expect(response.status).toBe(403);
+        expect(response.body.code).toBe("EMAIL_VERIFICATION_REQUIRED");
     });
 });
 
@@ -383,6 +581,31 @@ describe("session protected routes", () => {
         expect(response.status).toBe(401);
         expect(response.body.error).toBe("Invalid session");
     });
+
+    test("returns 403 when a valid session belongs to an expired unverified user", async () => {
+        const signupResponse = await request(app).post("/auth/signup").send({
+            name: "Expired Session Verification User",
+            email: "expired-session-verification@example.com",
+            password: "password123"
+        });
+        const sessionCookie = getSessionCookieHeader(signupResponse);
+
+        await UserDbModel.updateOne(
+            {
+                email: "expired-session-verification@example.com"
+            },
+            {
+                email_verification_required_at: new Date(Date.now() - 1000)
+            }
+        );
+
+        const response = await request(app)
+            .get("/calls")
+            .set("Cookie", sessionCookie);
+
+        expect(response.status).toBe(403);
+        expect(response.body.code).toBe("EMAIL_VERIFICATION_REQUIRED");
+    });
 });
 
 describe("POST /auth/refresh", () => {
@@ -436,6 +659,31 @@ describe("POST /auth/refresh", () => {
 
         expect(response.status).toBe(401);
         expect(response.body.error).toBe("Session cookie is required");
+    });
+
+    test("returns 403 when refreshing an expired unverified account", async () => {
+        const signupResponse = await request(app).post("/auth/signup").send({
+            name: "Expired Refresh Verification User",
+            email: "expired-refresh-verification@example.com",
+            password: "password123"
+        });
+        const sessionCookie = getSessionCookieHeader(signupResponse);
+
+        await UserDbModel.updateOne(
+            {
+                email: "expired-refresh-verification@example.com"
+            },
+            {
+                email_verification_required_at: new Date(Date.now() - 1000)
+            }
+        );
+
+        const response = await request(app)
+            .post("/auth/refresh")
+            .set("Cookie", sessionCookie);
+
+        expect(response.status).toBe(403);
+        expect(response.body.code).toBe("EMAIL_VERIFICATION_REQUIRED");
     });
 });
 
@@ -506,5 +754,23 @@ describe("JWT protected routes", () => {
 
         expect(response.status).toBe(401);
         expect(response.body.error).toBe("Invalid token");
+    });
+
+    test("returns 403 when bearer auth belongs to an expired unverified user", async () => {
+        const user = await UserDbModel.create({
+            name: "Expired Bearer Verification User",
+            email: "expired-bearer-verification@example.com",
+            password_hash: "hash",
+            password_salt: "salt",
+            email_verification_required_at: new Date(Date.now() - 1000)
+        });
+        const token = signAccessToken(user._id.toString());
+
+        const response = await request(app)
+            .get("/calls")
+            .set("Authorization", `Bearer ${token}`);
+
+        expect(response.status).toBe(403);
+        expect(response.body.code).toBe("EMAIL_VERIFICATION_REQUIRED");
     });
 });

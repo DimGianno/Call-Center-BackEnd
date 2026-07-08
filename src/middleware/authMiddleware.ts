@@ -9,6 +9,12 @@ import {
 } from "../utils/sessionCookie.js";
 import { logAuthDebug } from "../utils/authDebugLogger.js";
 import { isValidMongoObjectId } from "../utils/validators.js";
+import {
+    EMAIL_VERIFICATION_REQUIRED_CODE,
+    EMAIL_VERIFICATION_REQUIRED_ERROR,
+    ensureEmailVerificationDeadline,
+    isEmailVerificationGracePeriodExpired
+} from "../services/emailVerificationService.js";
 
 type RequestWithUserId = Request & {
     userId?: string;
@@ -33,6 +39,29 @@ const logCallsAuthDebug = (
     logAuthDebug(req, res, "GET /calls", details);
 };
 
+const rejectEmailVerificationRequired = (
+    res: Parameters<RequestHandler>[1]
+) => {
+    res.status(403).json({
+        error: EMAIL_VERIFICATION_REQUIRED_ERROR,
+        code: EMAIL_VERIFICATION_REQUIRED_CODE
+    });
+};
+
+const isUserPastEmailVerificationDeadline = async (
+    userId: string
+): Promise<boolean> => {
+    const user = await UserDbModel.findById(userId);
+
+    if (!user) {
+        return false;
+    }
+
+    await ensureEmailVerificationDeadline(user);
+
+    return isEmailVerificationGracePeriodExpired(user);
+};
+
 export const requireAuth: RequestHandler = async (req, res, next) => {
     const sessionToken = getSessionCookieValue(req);
 
@@ -52,6 +81,12 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
         }
 
         (req as RequestWithUserId).userId = sessionResult.userId;
+
+        if (await isUserPastEmailVerificationDeadline(sessionResult.userId)) {
+            rejectEmailVerificationRequired(res);
+            return;
+        }
+
         logCallsAuthDebug(req, res, {
             outcome: "session_authenticated",
             sessionDocumentFound: sessionResult.sessionDocumentFound
@@ -123,6 +158,15 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
         res.status(401).json({
             error: "Invalid token"
         });
+        return;
+    }
+
+    if (
+        await isUserPastEmailVerificationDeadline(
+            verificationResult.payload.sub
+        )
+    ) {
+        rejectEmailVerificationRequired(res);
         return;
     }
 

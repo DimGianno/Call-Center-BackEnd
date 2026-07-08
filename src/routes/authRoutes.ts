@@ -4,7 +4,9 @@ import {
     loginController,
     logoutController,
     refreshController,
-    signupController
+    resendVerificationController,
+    signupController,
+    verifyEmailController
 } from "../controllers/authControllers.js";
 
 /**
@@ -146,6 +148,10 @@ router.post("/login", loginController);
  *         description: Session cookie is missing, invalid, or expired.
  */
 router.post("/refresh", refreshController);
+
+router.post("/resend-verification", resendVerificationController);
+
+router.post("/verify-email", verifyEmailController);
 
 /**
  * @openapi

@@ -2,9 +2,9 @@
 
 A backend API for a call center application built with **Node.js**, **Express**, **TypeScript**, **MongoDB Atlas**, and **Mongoose**.
 
-Staging URL: https://staging-4b8t.onrender.com/
+Staging URL: https://api-staging.call-center.dimgianno.com/
 
-Production URL: https://call-center-backend-7z8r.onrender.com/
+Production URL: https://api.call-center.dimgianno.com/
 
 The API allows clients to manage call records, filter and paginate call lists, archive/unarchive calls, add notes to calls, delete calls, and seed sample data into the database.
 
@@ -29,6 +29,7 @@ This project was built as part of a backend engineering learning assignment, wit
 - Authenticated tutorial preference API
 - User-owned call records
 - Realtime same-account call updates with authenticated Server-Sent Events
+- Email verification with a 7-day grace period
 
 ### Bonus / Extended Features
 
@@ -186,6 +187,12 @@ API_BASE_URL=http://localhost:3000
 FRONTEND_ORIGINS=http://localhost:5173
 SESSION_TTL_MINUTES=10
 AUTH_DEBUG_LOGS=false
+RESEND_API_KEY=your_resend_api_key
+EMAIL_FROM="Call Center <verify@yourdomain.com>"
+FRONTEND_PUBLIC_URL=http://localhost:5173
+EMAIL_VERIFICATION_GRACE_DAYS=7
+EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=1440
+EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS=60
 ```
 
 Make sure `.env` is included in `.gitignore` so your database password is not pushed to GitHub.
@@ -237,19 +244,20 @@ npm run start
 
 ## Available Scripts
 
-| Script                 | Description                                                     |
-| ---------------------- | --------------------------------------------------------------- |
-| `npm run dev`          | Starts the development server                                   |
-| `npm run build`        | Compiles TypeScript into JavaScript                             |
-| `npm run start`        | Runs the compiled app from `dist`                               |
-| `npm run seed`         | Seeds MongoDB with sample call data                             |
-| `npm run typecheck`    | Runs TypeScript type-checking                                   |
-| `npm run lint`         | Runs ESLint on the src folder                                   |
-| `npm run format`       | Formats the project with Prettier                               |
-| `npm run format:check` | Checks if files follow Prettier formatting                      |
-| `npm test`             | Runs the Jest/SuperTest API test suite                          |
-| `npm run test:watch`   | Runs tests in watch mode during development                     |
-| `npm run check`        | Runs formatting check, linting, type-checking, build, and tests |
+| Script                                | Description                                                     |
+| ------------------------------------- | --------------------------------------------------------------- |
+| `npm run dev`                         | Starts the development server                                   |
+| `npm run build`                       | Compiles TypeScript into JavaScript                             |
+| `npm run start`                       | Runs the compiled app from `dist`                               |
+| `npm run seed`                        | Seeds MongoDB with sample call data                             |
+| `npm run backfill:email-verification` | Adds verification deadlines to existing unverified users        |
+| `npm run typecheck`                   | Runs TypeScript type-checking                                   |
+| `npm run lint`                        | Runs ESLint on the src folder                                   |
+| `npm run format`                      | Formats the project with Prettier                               |
+| `npm run format:check`                | Checks if files follow Prettier formatting                      |
+| `npm test`                            | Runs the Jest/SuperTest API test suite                          |
+| `npm run test:watch`                  | Runs tests in watch mode during development                     |
+| `npm run check`                       | Runs formatting check, linting, type-checking, build, and tests |
 
 ---
 
@@ -262,16 +270,28 @@ npm run start
 | GET    | `/`       | Root endpoint confirming the API is running |
 | GET    | `/health` | Health check endpoint                       |
 
+`GET /health` includes the active runtime environment:
+
+```json
+{
+    "status": "ok",
+    "environment": "staging",
+    "message": "API is healthy"
+}
+```
+
 ---
 
 ### Auth
 
-| Method | Endpoint        | Description                              |
-| ------ | --------------- | ---------------------------------------- |
-| POST   | `/auth/signup`  | Create a user and start a server session |
-| POST   | `/auth/login`   | Log in a user and start a server session |
-| POST   | `/auth/refresh` | Refresh the current cookie session       |
-| POST   | `/auth/logout`  | Delete the current cookie session        |
+| Method | Endpoint                    | Description                                  |
+| ------ | --------------------------- | -------------------------------------------- |
+| POST   | `/auth/signup`              | Create a user and start a server session     |
+| POST   | `/auth/login`               | Log in a user and start a server session     |
+| POST   | `/auth/refresh`             | Refresh the current cookie session           |
+| POST   | `/auth/resend-verification` | Resend the current user's verification email |
+| POST   | `/auth/verify-email`        | Verify an email verification token           |
+| POST   | `/auth/logout`              | Delete the current cookie session            |
 
 Successful signup and login responses set an HttpOnly `session` cookie and return:
 
@@ -284,14 +304,34 @@ Successful signup and login responses set an HttpOnly `session` cookie and retur
         "created_at": "2026-01-01T10:00:00.000Z"
     },
     "accessToken": "jwt-access-token",
+    "emailVerification": {
+        "verified": false,
+        "verifiedAt": null,
+        "requiredAt": "2026-01-08T10:00:00.000Z",
+        "gracePeriodExpired": false
+    },
     "sessionExpiresAt": "2026-01-01T10:10:00.000Z"
 }
 ```
 
+New users are allowed into the app immediately, but they receive an email verification link.
+Unverified users can keep using the app until `emailVerification.requiredAt`. After that, login,
+refresh, and protected API routes return:
+
+```json
+{
+    "error": "Email verification required",
+    "code": "EMAIL_VERIFICATION_REQUIRED"
+}
+```
+
+Verification emails are sent through Resend. Verification tokens are stored hashed, expire after 24
+hours by default, and can be used once.
+
 Browser clients should send the cookie on protected requests:
 
 ```ts
-fetch("https://call-center-backend-7z8r.onrender.com/calls", {
+fetch("https://api.call-center.dimgianno.com/calls", {
     credentials: "include"
 });
 ```
@@ -648,6 +688,8 @@ The project includes automated API tests using Jest, Supertest, and MongoMemoryS
 The tests cover:
 
 - user signup and login
+- email verification token creation, verification, expiry, reuse rejection, and resend cooldown
+- expired unverified account blocking for login, refresh, session auth, and bearer auth
 - server-owned session cookies, expiry, refresh, and logout
 - authenticated tutorial preference reads and updates
 - JWT validation for protected routes
@@ -693,11 +735,11 @@ http://localhost:3000/api-docs
 
 Staging API docs are available at:
 
-https://staging-4b8t.onrender.com/api-docs
+https://api-staging.call-center.dimgianno.com/api-docs
 
 Production API docs are available at:
 
-https://call-center-backend-7z8r.onrender.com/api-docs
+https://api.call-center.dimgianno.com/api-docs
 
 The Swagger page documents the main API endpoints, including:
 
@@ -745,9 +787,9 @@ A GitHub ruleset is also configured so the protected branch requires CI checks t
 
 The backend API is deployed on Render as Web Services.
 
-Staging URL: https://staging-4b8t.onrender.com/
+Staging URL: https://api-staging.call-center.dimgianno.com/
 
-Production URL: https://call-center-backend-7z8r.onrender.com/
+Production URL: https://api.call-center.dimgianno.com/
 
 Render is connected to the GitHub repository and automatically redeploys each service when changes are pushed to the branch configured in Render.
 
@@ -769,13 +811,37 @@ JWT_SECRET=<JWT signing secret>
 FRONTEND_ORIGINS=<comma-separated frontend origins>
 SESSION_TTL_MINUTES=10
 AUTH_DEBUG_LOGS=false
+RESEND_API_KEY=<Resend API key>
+EMAIL_FROM=<verified Resend sender>
+FRONTEND_PUBLIC_URL=<deployed frontend URL>
+EMAIL_VERIFICATION_GRACE_DAYS=7
+EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=1440
+EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS=60
 ```
 
-For Vercel frontend deployments calling Render backend deployments, include every deployed frontend origin that should be allowed to send credentials, for example:
+Production Render service:
 
 ```env
-FRONTEND_ORIGINS=https://your-production-app.vercel.app,https://your-staging-app.vercel.app
+NODE_ENV=production
+API_BASE_URL=https://api.call-center.dimgianno.com
+FRONTEND_ORIGINS=https://call-center.dimgianno.com
+FRONTEND_PUBLIC_URL=https://call-center.dimgianno.com
+MONGODB_URI=<production MongoDB Atlas connection string>
 ```
+
+Staging Render service:
+
+```env
+NODE_ENV=staging
+API_BASE_URL=https://api-staging.call-center.dimgianno.com
+FRONTEND_ORIGINS=https://call-center-staging.dimgianno.com
+FRONTEND_PUBLIC_URL=https://call-center-staging.dimgianno.com
+MONGODB_URI=<staging MongoDB Atlas connection string>
+```
+
+Production and staging must use separate `MONGODB_URI` values. The same codebase is deployed to both
+Render services, so `API_BASE_URL`, `FRONTEND_ORIGINS`, and `FRONTEND_PUBLIC_URL` must be set per
+service.
 
 In `staging` and `production`, session cookies are sent with `HttpOnly`, `Secure`, and `SameSite=None` so browsers can include them on cross-site frontend-to-backend requests.
 
@@ -787,25 +853,14 @@ issues. It logs safe auth diagnostics such as origin, user agent, whether a Cook
 whether the session cookie parsed, whether a session document was found, and whether Set-Cookie was
 sent. It does not log raw cookies or session tokens.
 
-For the Vercel-hosted frontend, the preferred production setup is to call the backend through the
-frontend's same-origin `/api/*` proxy. That keeps browser requests on the frontend origin and avoids
-mobile third-party-cookie blocking between `vercel.app` and `onrender.com`.
-
-For staging:
-
-```env
-NODE_ENV=staging
-API_BASE_URL=https://staging-4b8t.onrender.com
-```
-
-For production:
-
-```env
-NODE_ENV=production
-API_BASE_URL=https://call-center-backend-7z8r.onrender.com
-```
-
 The .env file is not committed to GitHub. Deployment environment variables are managed through Render's dashboard.
+
+After deploying the email verification schema change, run this once on the target environment so
+existing users receive a 7-day verification deadline:
+
+```bash
+npm run backfill:email-verification
+```
 
 The deployed API includes:
 

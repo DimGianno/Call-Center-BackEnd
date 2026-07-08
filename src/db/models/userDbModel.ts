@@ -14,8 +14,12 @@ export type UserDocument = {
     email: string;
     password_hash: string;
     password_salt: string;
+    email_verified_at?: Date | null;
+    email_verification_required_at?: Date | null;
+    email_verification_sent_at?: Date | null;
     tutorial?: TutorialDocument;
     created_at: Date;
+    save: () => Promise<UserDocument>;
 };
 
 const getDefaultTutorialState = (): TutorialDocument => {
@@ -79,6 +83,18 @@ const userSchema = new Schema<UserDocument>(
         password_salt: {
             type: String,
             required: true
+        },
+        email_verified_at: {
+            type: Date,
+            default: null
+        },
+        email_verification_required_at: {
+            type: Date,
+            default: null
+        },
+        email_verification_sent_at: {
+            type: Date,
+            default: null
         },
         tutorial: {
             type: tutorialSchema,

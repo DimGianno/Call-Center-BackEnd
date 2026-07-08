@@ -8,6 +8,14 @@ import type {
 import type { ServiceResult } from "../models/serviceTypes.js";
 import { signAccessToken } from "../utils/jwt.js";
 import { hashPassword, verifyPassword } from "../utils/password.js";
+import {
+    EMAIL_VERIFICATION_REQUIRED_ERROR,
+    ensureEmailVerificationDeadline,
+    getEmailVerificationRequiredAt,
+    getEmailVerificationStatus,
+    isEmailVerificationGracePeriodExpired,
+    sendVerificationEmailForUser
+} from "./emailVerificationService.js";
 import { createSession } from "./sessionService.js";
 
 const normalizeEmail = (email: string): string => {
@@ -42,15 +50,21 @@ export const signupUser = async (
         const user = await UserDbModel.create({
             name: input.name.trim(),
             email,
+            email_verification_required_at: getEmailVerificationRequiredAt(),
             ...passwordFields
         });
         const session = await createSession(user._id.toString());
+        await sendVerificationEmailForUser(user).catch((error) => {
+            console.warn("Failed to create or send verification email.", error);
+            return false;
+        });
 
         return {
             success: true,
             data: {
                 user: mapUserDocumentToUser(user),
                 accessToken: signAccessToken(user._id.toString()),
+                emailVerification: getEmailVerificationStatus(user),
                 sessionToken: session.sessionToken,
                 sessionExpiresAt: session.expiresAt.toISOString()
             }
@@ -82,6 +96,8 @@ export const loginUser = async (
         };
     }
 
+    await ensureEmailVerificationDeadline(user);
+
     const isPasswordValid = await verifyPassword(
         input.password,
         user.password_hash,
@@ -96,6 +112,14 @@ export const loginUser = async (
         };
     }
 
+    if (isEmailVerificationGracePeriodExpired(user)) {
+        return {
+            success: false,
+            statusCode: 403,
+            error: EMAIL_VERIFICATION_REQUIRED_ERROR
+        };
+    }
+
     const session = await createSession(user._id.toString());
 
     return {
@@ -103,6 +127,7 @@ export const loginUser = async (
         data: {
             user: mapUserDocumentToUser(user),
             accessToken: signAccessToken(user._id.toString()),
+            emailVerification: getEmailVerificationStatus(user),
             sessionToken: session.sessionToken,
             sessionExpiresAt: session.expiresAt.toISOString()
         }

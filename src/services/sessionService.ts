@@ -5,6 +5,12 @@ import { SessionDbModel } from "../db/models/sessionDbModel.js";
 import { UserDbModel } from "../db/models/userDbModel.js";
 import { mapUserDocumentToUser } from "../mappers/userMapper.js";
 import type { SessionResponse } from "../models/userModel.js";
+import {
+    EMAIL_VERIFICATION_REQUIRED_ERROR,
+    ensureEmailVerificationDeadline,
+    getEmailVerificationStatus,
+    isEmailVerificationGracePeriodExpired
+} from "./emailVerificationService.js";
 
 const DEFAULT_SESSION_TTL_MINUTES = 10;
 const MILLISECONDS_PER_MINUTE = 60 * 1000;
@@ -187,11 +193,23 @@ export const refreshSession = async (
         };
     }
 
+    await ensureEmailVerificationDeadline(user);
+
+    if (isEmailVerificationGracePeriodExpired(user)) {
+        return {
+            success: false,
+            statusCode: 403,
+            error: EMAIL_VERIFICATION_REQUIRED_ERROR,
+            sessionDocumentFound: true
+        };
+    }
+
     return {
         success: true,
         sessionDocumentFound: true,
         data: {
             user: mapUserDocumentToUser(user),
+            emailVerification: getEmailVerificationStatus(user),
             sessionToken,
             sessionExpiresAt: refreshedSession.expires_at.toISOString()
         }

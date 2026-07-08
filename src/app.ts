@@ -36,6 +36,7 @@ app.get("/", (_req, res) => {
 app.get("/health", (_req, res) => {
     res.status(200).json({
         status: "ok",
+        environment: process.env.NODE_ENV ?? "development",
         message: "API is healthy"
     });
 });

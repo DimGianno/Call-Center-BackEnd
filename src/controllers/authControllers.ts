@@ -2,7 +2,11 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 
 import { loginUser, signupUser } from "../services/authService.js";
-import { deleteSession, refreshSession } from "../services/sessionService.js";
+import {
+    deleteSession,
+    refreshSession,
+    validateSessionToken
+} from "../services/sessionService.js";
 import type { AuthResult, AuthResponse } from "../models/userModel.js";
 import {
     clearSessionCookie,
@@ -10,6 +14,12 @@ import {
     setSessionCookie
 } from "../utils/sessionCookie.js";
 import { hasSetCookieHeader, logAuthDebug } from "../utils/authDebugLogger.js";
+import {
+    EMAIL_VERIFICATION_REQUIRED_CODE,
+    EMAIL_VERIFICATION_REQUIRED_ERROR,
+    resendVerificationEmail,
+    verifyEmail
+} from "../services/emailVerificationService.js";
 
 const signupRequestSchema = z
     .object({
@@ -28,6 +38,12 @@ const loginRequestSchema = z
     })
     .strict();
 
+const verifyEmailRequestSchema = z
+    .object({
+        token: z.string().min(1, "Verification token is required")
+    })
+    .strict();
+
 const getValidationErrorMessage = (error: z.ZodError): string => {
     return error.issues[0]?.message ?? "Invalid request body";
 };
@@ -36,7 +52,21 @@ const getAuthResponseBody = (data: AuthResult): AuthResponse => {
     return {
         user: data.user,
         accessToken: data.accessToken,
+        emailVerification: data.emailVerification,
         sessionExpiresAt: data.sessionExpiresAt
+    };
+};
+
+const getAuthErrorBody = (error: string) => {
+    if (error === EMAIL_VERIFICATION_REQUIRED_ERROR) {
+        return {
+            error,
+            code: EMAIL_VERIFICATION_REQUIRED_CODE
+        };
+    }
+
+    return {
+        error
     };
 };
 
@@ -63,9 +93,7 @@ export const signupController = async (req: Request, res: Response) => {
             sessionDocumentFound: false,
             setCookieSent: false
         });
-        res.status(result.statusCode).json({
-            error: result.error
-        });
+        res.status(result.statusCode).json(getAuthErrorBody(result.error));
         return;
     }
 
@@ -107,9 +135,7 @@ export const loginController = async (req: Request, res: Response) => {
             sessionDocumentFound: false,
             setCookieSent: false
         });
-        res.status(result.statusCode).json({
-            error: result.error
-        });
+        res.status(result.statusCode).json(getAuthErrorBody(result.error));
         return;
     }
 
@@ -152,9 +178,7 @@ export const refreshController = async (req: Request, res: Response) => {
             sessionDocumentFound: result.sessionDocumentFound,
             setCookieSent: hasSetCookieHeader(res)
         });
-        res.status(result.statusCode).json({
-            error: result.error
-        });
+        res.status(result.statusCode).json(getAuthErrorBody(result.error));
         return;
     }
 
@@ -172,7 +196,53 @@ export const refreshController = async (req: Request, res: Response) => {
 
     res.status(200).json({
         user: result.data.user,
+        emailVerification: result.data.emailVerification,
         sessionExpiresAt: result.data.sessionExpiresAt
+    });
+};
+
+export const resendVerificationController = async (
+    req: Request,
+    res: Response
+) => {
+    const sessionToken = getSessionCookieValue(req);
+
+    if (sessionToken !== undefined) {
+        const sessionResult = await validateSessionToken(sessionToken);
+
+        if (sessionResult.success) {
+            await resendVerificationEmail(sessionResult.userId);
+        }
+    }
+
+    res.status(200).json({
+        message:
+            "If this account needs verification, a new email will be sent shortly."
+    });
+};
+
+export const verifyEmailController = async (req: Request, res: Response) => {
+    const parsedBody = verifyEmailRequestSchema.safeParse(req.body);
+
+    if (!parsedBody.success) {
+        res.status(400).json({
+            error: getValidationErrorMessage(parsedBody.error)
+        });
+        return;
+    }
+
+    const result = await verifyEmail(parsedBody.data.token);
+
+    if (!result.success) {
+        res.status(result.statusCode).json({
+            error: result.error
+        });
+        return;
+    }
+
+    res.status(200).json({
+        message: "Email verified successfully",
+        emailVerification: result.status
     });
 };
 
