@@ -38,6 +38,7 @@ export type TutorialState = {
     completedAt: string | null;
     skippedAt: string | null;
     completedTopics: string[];
+    newTopics: string[];
 };
 
 export type SignupInput = {

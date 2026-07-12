@@ -6,6 +6,7 @@ export type TutorialDocument = {
     completedAt: string | null;
     skippedAt: string | null;
     completedTopics: string[];
+    newTopics: string[];
 };
 
 export type UserDocument = {
@@ -24,11 +25,12 @@ export type UserDocument = {
 
 const getDefaultTutorialState = (): TutorialDocument => {
     return {
-        version: 1,
+        version: 2,
         hasSeenWelcome: false,
         completedAt: null,
         skippedAt: null,
-        completedTopics: []
+        completedTopics: [],
+        newTopics: []
     };
 };
 
@@ -53,6 +55,10 @@ const tutorialSchema = new Schema<TutorialDocument>(
             default: null
         },
         completedTopics: {
+            type: [String],
+            default: []
+        },
+        newTopics: {
             type: [String],
             default: []
         }

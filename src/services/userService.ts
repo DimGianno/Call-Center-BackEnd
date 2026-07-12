@@ -2,7 +2,11 @@ import { UserDbModel } from "../db/models/userDbModel.js";
 import type { ServiceResult } from "../models/serviceTypes.js";
 import type { TutorialState } from "../models/userModel.js";
 
-export const CURRENT_TUTORIAL_VERSION = 1;
+export const CURRENT_TUTORIAL_VERSION = 2;
+
+const NEW_TOPICS_BY_VERSION: Record<number, string[]> = {
+    2: ["call-item"]
+};
 
 type TutorialStateUpdate = Partial<TutorialState>;
 
@@ -12,8 +16,15 @@ const getDefaultTutorialState = (): TutorialState => {
         hasSeenWelcome: false,
         completedAt: null,
         skippedAt: null,
-        completedTopics: []
+        completedTopics: [],
+        newTopics: []
     };
+};
+
+const getNewTopicsSince = (version: number): string[] => {
+    return Object.entries(NEW_TOPICS_BY_VERSION)
+        .filter(([releaseVersion]) => Number(releaseVersion) > version)
+        .flatMap(([, topics]) => topics);
 };
 
 const mapTutorialState = (
@@ -22,11 +33,16 @@ const mapTutorialState = (
     const defaultState = getDefaultTutorialState();
     const version = tutorial?.version;
 
+    const normalizedVersion =
+        typeof version === "number" && Number.isInteger(version)
+            ? version
+            : defaultState.version;
+    const storedNewTopics = Array.isArray(tutorial?.newTopics)
+        ? tutorial.newTopics
+        : [];
+
     return {
-        version:
-            typeof version === "number" && Number.isInteger(version)
-                ? version
-                : defaultState.version,
+        version: normalizedVersion,
         hasSeenWelcome:
             typeof tutorial?.hasSeenWelcome === "boolean"
                 ? tutorial.hasSeenWelcome
@@ -39,7 +55,13 @@ const mapTutorialState = (
             typeof tutorial?.skippedAt === "string" ? tutorial.skippedAt : null,
         completedTopics: Array.isArray(tutorial?.completedTopics)
             ? tutorial.completedTopics
-            : []
+            : [],
+        newTopics: Array.from(
+            new Set([
+                ...storedNewTopics,
+                ...getNewTopicsSince(normalizedVersion)
+            ])
+        )
     };
 };
 

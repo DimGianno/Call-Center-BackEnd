@@ -16,7 +16,7 @@ const router = Router();
  *       properties:
  *         version:
  *           type: integer
- *           example: 1
+ *           example: 2
  *         hasSeenWelcome:
  *           type: boolean
  *           example: false
@@ -31,6 +31,11 @@ const router = Router();
  *           format: date-time
  *           example: null
  *         completedTopics:
+ *           type: array
+ *           items:
+ *             type: string
+ *           example: []
+ *         newTopics:
  *           type: array
  *           items:
  *             type: string

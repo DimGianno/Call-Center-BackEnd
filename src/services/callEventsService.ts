@@ -5,6 +5,7 @@ export type CallChangeAction =
     | "unarchive"
     | "delete"
     | "add_note"
+    | "delete_note"
     | "archive_all"
     | "unarchive_all"
     | "reset";

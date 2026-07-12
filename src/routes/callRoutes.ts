@@ -5,6 +5,7 @@ import {
     archiveCallController,
     unarchiveCallController,
     addNoteToCallController,
+    deleteNoteFromCallController,
     deleteCallController,
     archiveAllCallsController,
     unarchiveAllCallsController,
@@ -400,6 +401,39 @@ router.patch("/:callId/unarchive", unarchiveCallController);
  *               $ref: "#/components/schemas/ErrorResponse"
  */
 router.post("/:callId/notes", addNoteToCallController);
+
+/**
+ * @openapi
+ * /calls/{callId}/notes/{noteId}:
+ *   delete:
+ *     summary: Delete a note from a call
+ *     description: Deletes one note and returns the updated call.
+ *     tags:
+ *       - Calls
+ *     security:
+ *       - cookieAuth: []
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: "#/components/parameters/CallId"
+ *       - in: path
+ *         name: noteId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the note.
+ *     responses:
+ *       200:
+ *         description: Note deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Call"
+ *       400:
+ *         description: Invalid call or note ID format.
+ *       404:
+ *         description: Call or note not found.
+ */
+router.delete("/:callId/notes/:noteId", deleteNoteFromCallController);
 
 /**
  * @openapi

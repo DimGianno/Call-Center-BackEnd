@@ -239,6 +239,51 @@ export async function addNoteToCall(
     };
 }
 
+export async function deleteNoteFromCall(
+    userId: string,
+    callId: string,
+    noteId: string
+): Promise<ServiceResult<CallWithNotes>> {
+    if (!isValidMongoObjectId(callId) || !isValidMongoObjectId(noteId)) {
+        return {
+            success: false,
+            statusCode: 400,
+            error: "Invalid call or note ID format"
+        };
+    }
+
+    const call = await CallDbModel.findOne({
+        _id: callId,
+        user_id: getUserObjectId(userId)
+    });
+
+    if (!call) {
+        return {
+            success: false,
+            statusCode: 404,
+            error: "Call not found"
+        };
+    }
+
+    const noteIndex = call.notes.findIndex((note) => note._id.equals(noteId));
+
+    if (noteIndex === -1) {
+        return {
+            success: false,
+            statusCode: 404,
+            error: "Note not found"
+        };
+    }
+
+    call.notes.splice(noteIndex, 1);
+    const updatedCall = await call.save();
+
+    return {
+        success: true,
+        data: mapCallDocumentToCallWithNotes(updatedCall)
+    };
+}
+
 export async function deleteCall(
     userId: string,
     callId: string
