@@ -10,6 +10,11 @@ The API allows clients to manage call records, filter and paginate call lists, a
 
 This project was built as part of a backend engineering learning assignment, with focus on REST API design, validation, error handling, persistent storage, testing, and CI/CD.
 
+## Project Documentation
+
+- [Project updates](PROJECT_UPDATES.md)
+- [Project roadmap](PROJECT_ROADMAP.md)
+
 ## Features Implemented
 
 ### Core Features
@@ -936,21 +941,6 @@ MongoDB is the source of truth for the application.
 Calls are stored as MongoDB documents. Notes are embedded inside each call document.
 
 The API maps MongoDB `_id` fields to `id` in responses so clients do not need to work directly with MongoDB-specific field names.
-
----
-
-## Known Limitations
-
-If I had more time, I would improve the project by adding:
-
-- Account-wide session revocation controls
-- More complete request validation across all endpoints
-- More advanced logging
-- Rate limiting
-- Separate production environment in addition to development and staging
-- Search by phone number or note content
-- Update/edit note functionality
-- Delete note functionality
 
 ---
 
