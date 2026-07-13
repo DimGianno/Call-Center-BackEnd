@@ -1,13 +1,17 @@
 import { Router } from "express";
 
 import {
+    changePasswordController,
+    forgotPasswordController,
     loginController,
     logoutController,
     refreshController,
     resendVerificationController,
+    resetPasswordController,
     signupController,
     verifyEmailController
 } from "../controllers/authControllers.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
 /**
  * @openapi
@@ -131,6 +135,92 @@ router.post("/signup", signupController);
  *         description: Invalid credentials.
  */
 router.post("/login", loginController);
+
+/**
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request a password reset email
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Generic password reset request response.
+ *       400:
+ *         description: Invalid request body.
+ */
+router.post("/forgot-password", forgotPasswordController);
+
+/**
+ * @openapi
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset a password with an emailed token
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, password]
+ *             properties:
+ *               token:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Password reset successfully.
+ *       400:
+ *         description: Invalid request body or reset token.
+ */
+router.post("/reset-password", resetPasswordController);
+
+/**
+ * @openapi
+ * /auth/change-password:
+ *   post:
+ *     summary: Change the authenticated user's password
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Password changed and sessions revoked.
+ *       400:
+ *         description: Invalid current or new password.
+ *       401:
+ *         description: Authentication required.
+ */
+router.post("/change-password", requireAuth, changePasswordController);
 
 /**
  * @openapi

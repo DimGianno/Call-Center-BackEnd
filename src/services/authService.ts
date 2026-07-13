@@ -73,7 +73,9 @@ export const signupUser = async (
             success: true,
             data: {
                 user: mapUserDocumentToUser(user),
-                accessToken: signAccessToken(user._id.toString()),
+                accessToken: signAccessToken(user._id.toString(), {
+                    tokenVersion: user.auth_token_version ?? 0
+                }),
                 emailVerification: getEmailVerificationStatus(user),
                 sessionToken: session.sessionToken,
                 sessionExpiresAt: session.expiresAt.toISOString()
@@ -136,7 +138,9 @@ export const loginUser = async (
         success: true,
         data: {
             user: mapUserDocumentToUser(user),
-            accessToken: signAccessToken(user._id.toString()),
+            accessToken: signAccessToken(user._id.toString(), {
+                tokenVersion: user.auth_token_version ?? 0
+            }),
             emailVerification: getEmailVerificationStatus(user),
             sessionToken: session.sessionToken,
             sessionExpiresAt: session.expiresAt.toISOString()

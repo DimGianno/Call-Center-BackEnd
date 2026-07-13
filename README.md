@@ -193,6 +193,8 @@ FRONTEND_PUBLIC_URL=http://localhost:5173
 EMAIL_VERIFICATION_GRACE_DAYS=7
 EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=1440
 EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS=60
+PASSWORD_RESET_TOKEN_TTL_MINUTES=60
+PASSWORD_RESET_RESEND_COOLDOWN_SECONDS=60
 ```
 
 Make sure `.env` is included in `.gitignore` so your database password is not pushed to GitHub.
@@ -288,6 +290,9 @@ npm run start
 | ------ | --------------------------- | -------------------------------------------- |
 | POST   | `/auth/signup`              | Create a user and start a server session     |
 | POST   | `/auth/login`               | Log in a user and start a server session     |
+| POST   | `/auth/forgot-password`     | Request a generic password reset email       |
+| POST   | `/auth/reset-password`      | Reset a password with an emailed token       |
+| POST   | `/auth/change-password`     | Change the authenticated user's password     |
 | POST   | `/auth/refresh`             | Refresh the current cookie session           |
 | POST   | `/auth/resend-verification` | Resend the current user's verification email |
 | POST   | `/auth/verify-email`        | Verify an email verification token           |
@@ -327,6 +332,11 @@ refresh, and protected API routes return:
 
 Verification emails are sent through Resend. Verification tokens are stored hashed, expire after 24
 hours by default, and can be used once.
+
+Password reset emails are also sent through Resend. Reset tokens are stored only as SHA-256 hashes,
+expire after 60 minutes by default, and can be used once. Successful password resets and authenticated
+password changes revoke all cookie sessions and previously issued bearer tokens. Forgot-password
+requests always return the same response for existing and unknown accounts.
 
 Browser clients should send the cookie on protected requests:
 
@@ -745,6 +755,9 @@ The Swagger page documents the main API endpoints, including:
 
 - POST /auth/signup
 - POST /auth/login
+- POST /auth/forgot-password
+- POST /auth/reset-password
+- POST /auth/change-password
 - GET /calls
 - GET /calls/:callId
 - PATCH /calls/:callId/archive
@@ -818,6 +831,8 @@ FRONTEND_PUBLIC_URL=<deployed frontend URL>
 EMAIL_VERIFICATION_GRACE_DAYS=7
 EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=1440
 EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS=60
+PASSWORD_RESET_TOKEN_TTL_MINUTES=60
+PASSWORD_RESET_RESEND_COOLDOWN_SECONDS=60
 ```
 
 Production Render service:
@@ -877,6 +892,9 @@ GET /health
 GET /api-docs
 POST /auth/signup
 POST /auth/login
+POST /auth/forgot-password
+POST /auth/reset-password
+POST /auth/change-password
 GET /calls
 ```
 

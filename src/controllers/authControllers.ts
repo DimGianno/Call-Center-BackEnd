@@ -3,6 +3,11 @@ import { z } from "zod";
 
 import { loginUser, signupUser } from "../services/authService.js";
 import {
+    changePassword,
+    requestPasswordReset,
+    resetPassword
+} from "../services/passwordResetService.js";
+import {
     deleteSession,
     refreshSession,
     validateSessionToken
@@ -20,6 +25,7 @@ import {
     resendVerificationEmail,
     verifyEmail
 } from "../services/emailVerificationService.js";
+import { getAuthenticatedUserId } from "../middleware/authMiddleware.js";
 
 const signupRequestSchema = z
     .object({
@@ -41,6 +47,30 @@ const loginRequestSchema = z
 const verifyEmailRequestSchema = z
     .object({
         token: z.string().min(1, "Verification token is required")
+    })
+    .strict();
+
+const forgotPasswordRequestSchema = z
+    .object({
+        email: z.string().trim().email("Email must be a valid email address")
+    })
+    .strict();
+
+const resetPasswordRequestSchema = z
+    .object({
+        token: z.string().min(1, "Password reset token is required"),
+        password: z
+            .string()
+            .min(8, "Password must be at least 8 characters long")
+    })
+    .strict();
+
+const changePasswordRequestSchema = z
+    .object({
+        currentPassword: z.string().min(1, "Current password is required"),
+        newPassword: z
+            .string()
+            .min(8, "Password must be at least 8 characters long")
     })
     .strict();
 
@@ -244,6 +274,73 @@ export const verifyEmailController = async (req: Request, res: Response) => {
         message: "Email verified successfully",
         emailVerification: result.status
     });
+};
+
+export const forgotPasswordController = async (req: Request, res: Response) => {
+    const parsedBody = forgotPasswordRequestSchema.safeParse(req.body);
+
+    if (!parsedBody.success) {
+        res.status(400).json({
+            error: getValidationErrorMessage(parsedBody.error)
+        });
+        return;
+    }
+
+    await requestPasswordReset(parsedBody.data.email);
+
+    res.status(200).json({
+        message:
+            "If an account exists for this email, a password reset link will be sent shortly."
+    });
+};
+
+export const resetPasswordController = async (req: Request, res: Response) => {
+    const parsedBody = resetPasswordRequestSchema.safeParse(req.body);
+
+    if (!parsedBody.success) {
+        res.status(400).json({
+            error: getValidationErrorMessage(parsedBody.error)
+        });
+        return;
+    }
+
+    const result = await resetPassword(
+        parsedBody.data.token,
+        parsedBody.data.password
+    );
+
+    if (!result.success) {
+        res.status(result.statusCode).json({ error: result.error });
+        return;
+    }
+
+    clearSessionCookie(res);
+    res.status(200).json(result.data);
+};
+
+export const changePasswordController = async (req: Request, res: Response) => {
+    const parsedBody = changePasswordRequestSchema.safeParse(req.body);
+
+    if (!parsedBody.success) {
+        res.status(400).json({
+            error: getValidationErrorMessage(parsedBody.error)
+        });
+        return;
+    }
+
+    const result = await changePassword(
+        getAuthenticatedUserId(req),
+        parsedBody.data.currentPassword,
+        parsedBody.data.newPassword
+    );
+
+    if (!result.success) {
+        res.status(result.statusCode).json({ error: result.error });
+        return;
+    }
+
+    clearSessionCookie(res);
+    res.status(200).json(result.data);
 };
 
 export const logoutController = async (req: Request, res: Response) => {
