@@ -10,11 +10,12 @@ import { SESSION_COOKIE_NAME } from "../utils/sessionCookie.js";
 let mongoServer: MongoMemoryServer;
 
 const defaultTutorialState = {
-    version: 1,
+    version: 2,
     hasSeenWelcome: false,
     completedAt: null,
     skippedAt: null,
-    completedTopics: []
+    completedTopics: [],
+    newTopics: []
 };
 
 const getSetCookies = (response: Response): string[] => {
@@ -112,7 +113,10 @@ describe("GET /users/me/tutorial", () => {
             .set("Cookie", sessionCookie);
 
         expect(response.status).toBe(200);
-        expect(response.body).toEqual(savedTutorialState);
+        expect(response.body).toEqual({
+            ...savedTutorialState,
+            newTopics: ["call-item"]
+        });
     });
 
     test("creates the default state when an existing user has no tutorial field", async () => {
@@ -171,11 +175,12 @@ describe("PATCH /users/me/tutorial", () => {
 
         expect(patchResponse.status).toBe(200);
         expect(patchResponse.body).toEqual({
-            version: 1,
+            version: 2,
             hasSeenWelcome: true,
             completedAt: "2026-07-01T07:00:00.000Z",
             skippedAt: null,
-            completedTopics: ["welcome", "calls"]
+            completedTopics: ["welcome", "calls"],
+            newTopics: []
         });
         expect(getResponse.status).toBe(200);
         expect(getResponse.body).toEqual(patchResponse.body);
@@ -207,6 +212,64 @@ describe("PATCH /users/me/tutorial", () => {
             hasSeenWelcome: true,
             skippedAt: null
         });
+    });
+
+    test("acknowledges version 2 without clearing newly released topics", async () => {
+        const sessionCookie = await signupAndGetSessionCookie();
+
+        await UserDbModel.updateOne(
+            { email: "tutorial@example.com" },
+            {
+                tutorial: {
+                    version: 1,
+                    hasSeenWelcome: true,
+                    completedAt: "2026-07-01T10:00:00.000Z",
+                    skippedAt: null,
+                    completedTopics: ["call-item"]
+                }
+            }
+        );
+
+        const response = await request(app)
+            .patch("/users/me/tutorial")
+            .set("Cookie", sessionCookie)
+            .send({ version: 2 });
+
+        expect(response.status).toBe(200);
+        expect(response.body).toMatchObject({
+            version: 2,
+            completedTopics: ["call-item"],
+            newTopics: ["call-item"]
+        });
+    });
+
+    test("persists clearing a completed new topic", async () => {
+        const sessionCookie = await signupAndGetSessionCookie();
+
+        await UserDbModel.updateOne(
+            { email: "tutorial@example.com" },
+            {
+                tutorial: {
+                    version: 1,
+                    hasSeenWelcome: true,
+                    completedAt: null,
+                    skippedAt: null,
+                    completedTopics: []
+                }
+            }
+        );
+
+        const response = await request(app)
+            .patch("/users/me/tutorial")
+            .set("Cookie", sessionCookie)
+            .send({
+                version: 2,
+                completedTopics: ["call-item"],
+                newTopics: []
+            });
+
+        expect(response.status).toBe(200);
+        expect(response.body.newTopics).toEqual([]);
     });
 
     test("returns 400 when version is not an integer", async () => {
@@ -257,6 +320,17 @@ describe("PATCH /users/me/tutorial", () => {
             .send({
                 completedTopics: ["welcome", 123]
             });
+
+        expect(response.status).toBe(400);
+    });
+
+    test("returns 400 when newTopics is not an array of strings", async () => {
+        const sessionCookie = await signupAndGetSessionCookie();
+
+        const response = await request(app)
+            .patch("/users/me/tutorial")
+            .set("Cookie", sessionCookie)
+            .send({ newTopics: ["call-item", 123] });
 
         expect(response.status).toBe(400);
     });

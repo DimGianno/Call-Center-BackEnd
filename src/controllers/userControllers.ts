@@ -27,7 +27,8 @@ const tutorialPreferenceSchema = z
         hasSeenWelcome: z.boolean().optional(),
         completedAt: isoDateStringOrNullSchema.optional(),
         skippedAt: isoDateStringOrNullSchema.optional(),
-        completedTopics: z.array(z.string().trim()).optional()
+        completedTopics: z.array(z.string().trim()).optional(),
+        newTopics: z.array(z.string().trim()).optional()
     })
     .strict()
     .refine(

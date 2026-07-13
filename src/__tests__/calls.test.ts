@@ -630,6 +630,85 @@ describe("POST /calls/:callId/notes", () => {
     });
 });
 
+describe("DELETE /calls/:callId/notes/:noteId", () => {
+    test("deletes a note and returns the updated call", async () => {
+        const callId = seededCalls[0]._id.toString();
+        const noteId = seededCalls[0].notes[0]._id.toString();
+
+        const response = await deleteWithAuth(
+            `/calls/${callId}/notes/${noteId}`
+        );
+        const updatedCall = await CallDbModel.findById(callId);
+
+        expect(response.status).toBe(200);
+        expect(response.body.id).toBe(callId);
+        expect(response.body.notes).toEqual([]);
+        expect(updatedCall?.notes).toHaveLength(0);
+    });
+
+    test("returns 401 without authentication", async () => {
+        const callId = seededCalls[0]._id.toString();
+        const noteId = seededCalls[0].notes[0]._id.toString();
+
+        const response = await request(app).delete(
+            `/calls/${callId}/notes/${noteId}`
+        );
+
+        expect(response.status).toBe(401);
+    });
+
+    test("returns 400 for malformed call or note ids", async () => {
+        const validId = new mongoose.Types.ObjectId().toString();
+        const invalidCallResponse = await deleteWithAuth(
+            `/calls/invalid/notes/${validId}`
+        );
+        const invalidNoteResponse = await deleteWithAuth(
+            `/calls/${validId}/notes/invalid`
+        );
+
+        expect(invalidCallResponse.status).toBe(400);
+        expect(invalidNoteResponse.status).toBe(400);
+    });
+
+    test("returns 404 for a missing note", async () => {
+        const callId = seededCalls[0]._id.toString();
+        const noteId = new mongoose.Types.ObjectId().toString();
+
+        const response = await deleteWithAuth(
+            `/calls/${callId}/notes/${noteId}`
+        );
+
+        expect(response.status).toBe(404);
+    });
+
+    test("returns 404 for a missing call", async () => {
+        const callId = new mongoose.Types.ObjectId().toString();
+        const noteId = new mongoose.Types.ObjectId().toString();
+
+        const response = await deleteWithAuth(
+            `/calls/${callId}/notes/${noteId}`
+        );
+
+        expect(response.status).toBe(404);
+    });
+
+    test("does not expose another user's call", async () => {
+        const noteId = new mongoose.Types.ObjectId();
+        await CallDbModel.updateOne(
+            { _id: otherUserActiveCallId },
+            { $push: { notes: { _id: noteId, content: "Private note" } } }
+        );
+
+        const response = await deleteWithAuth(
+            `/calls/${otherUserActiveCallId}/notes/${noteId.toString()}`
+        );
+
+        expect(response.status).toBe(404);
+        const untouchedCall = await CallDbModel.findById(otherUserActiveCallId);
+        expect(untouchedCall?.notes).toHaveLength(1);
+    });
+});
+
 describe("DELETE /calls/:callId", () => {
     test("deletes a call", async () => {
         const callId = seededCalls[0]._id.toString();
@@ -689,6 +768,21 @@ describe("GET /events/calls", () => {
 
             expect(eventChunk).toContain('"version":1');
             expect(eventChunk).toContain('"action":"archive"');
+            expect(eventChunk).toContain(`"callId":"${callId}"`);
+        });
+    });
+
+    test("broadcasts delete_note after deleting an individual note", async () => {
+        const callId = seededCalls[0]._id.toString();
+        const noteId = seededCalls[0].notes[0]._id.toString();
+
+        await withCallEventStream(async ({ waitForText }) => {
+            const response = await deleteWithAuth(
+                `/calls/${callId}/notes/${noteId}`
+            );
+
+            expect(response.status).toBe(200);
+            const eventChunk = await waitForText('"action":"delete_note"');
             expect(eventChunk).toContain(`"callId":"${callId}"`);
         });
     });

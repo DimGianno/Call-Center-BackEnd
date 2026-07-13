@@ -6,6 +6,7 @@ import {
     archiveCall,
     unarchiveCall,
     addNoteToCall,
+    deleteNoteFromCall,
     deleteCall,
     archiveAllCalls,
     unarchiveAllCalls,
@@ -16,6 +17,10 @@ import { getAuthenticatedUserId } from "../middleware/authMiddleware.js";
 import { broadcastCallChange } from "../services/callEventsService.js";
 type CallIdParams = {
     callId: string;
+};
+
+type CallNoteIdParams = CallIdParams & {
+    noteId: string;
 };
 
 const getCallsQuerySchema = z
@@ -187,6 +192,23 @@ export const addNoteToCallController = async (
     broadcastCallChange(userId, "add_note", callId);
 
     res.status(201).json(result.data);
+};
+
+export const deleteNoteFromCallController = async (
+    req: Request<CallNoteIdParams>,
+    res: Response
+) => {
+    const userId = getAuthenticatedUserId(req);
+    const { callId, noteId } = req.params;
+    const result = await deleteNoteFromCall(userId, callId, noteId);
+
+    if (!result.success) {
+        res.status(result.statusCode).json({ error: result.error });
+        return;
+    }
+
+    broadcastCallChange(userId, "delete_note", callId);
+    res.status(200).json(result.data);
 };
 
 export const deleteCallController = async (
