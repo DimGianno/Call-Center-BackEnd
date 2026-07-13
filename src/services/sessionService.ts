@@ -221,3 +221,9 @@ export const deleteSession = async (sessionToken: string): Promise<void> => {
         token_hash: hashSessionToken(sessionToken)
     });
 };
+
+export const deleteSessionsForUser = async (userId: string): Promise<void> => {
+    await SessionDbModel.deleteMany({
+        user_id: userId
+    });
+};

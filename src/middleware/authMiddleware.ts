@@ -146,13 +146,24 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
         return;
     }
 
-    const userExists = await UserDbModel.exists({
-        _id: verificationResult.payload.sub
-    });
+    const user = await UserDbModel.findById(verificationResult.payload.sub);
 
-    if (!userExists) {
+    if (!user) {
         logCallsAuthDebug(req, res, {
             outcome: "invalid_bearer_token_user",
+            sessionDocumentFound: false
+        });
+        res.status(401).json({
+            error: "Invalid token"
+        });
+        return;
+    }
+
+    if (
+        (verificationResult.payload.ver ?? 0) !== (user.auth_token_version ?? 0)
+    ) {
+        logCallsAuthDebug(req, res, {
+            outcome: "revoked_bearer_token",
             sessionDocumentFound: false
         });
         res.status(401).json({

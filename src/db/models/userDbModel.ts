@@ -14,6 +14,7 @@ export type UserDocument = {
     email: string;
     password_hash: string;
     password_salt: string;
+    auth_token_version?: number;
     email_verified_at?: Date | null;
     email_verification_required_at?: Date | null;
     email_verification_sent_at?: Date | null;
@@ -83,6 +84,11 @@ const userSchema = new Schema<UserDocument>(
         password_salt: {
             type: String,
             required: true
+        },
+        auth_token_version: {
+            type: Number,
+            required: true,
+            default: 0
         },
         email_verified_at: {
             type: Date,

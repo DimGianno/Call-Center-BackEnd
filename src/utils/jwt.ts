@@ -10,6 +10,7 @@ export type AccessTokenPayload = {
     sub: string;
     iat: number;
     exp: number;
+    ver?: number;
 };
 
 type JwtHeader = {
@@ -30,6 +31,7 @@ type JwtVerificationResult =
 type SignAccessTokenOptions = {
     expiresInSeconds?: number;
     issuedAt?: number;
+    tokenVersion?: number;
 };
 
 const getJwtSecret = (): string => {
@@ -91,7 +93,11 @@ const isAccessTokenPayload = (value: unknown): value is AccessTokenPayload => {
         typeof value.iat === "number" &&
         Number.isInteger(value.iat) &&
         typeof value.exp === "number" &&
-        Number.isInteger(value.exp)
+        Number.isInteger(value.exp) &&
+        (value.ver === undefined ||
+            (typeof value.ver === "number" &&
+                Number.isInteger(value.ver) &&
+                value.ver >= 0))
     );
 };
 
@@ -113,7 +119,8 @@ export const signAccessToken = (
     const payload: AccessTokenPayload = {
         sub: userId,
         iat: issuedAt,
-        exp: issuedAt + expiresInSeconds
+        exp: issuedAt + expiresInSeconds,
+        ver: options.tokenVersion ?? 0
     };
 
     const encodedHeader = encodeJsonSegment(JWT_HEADER);
