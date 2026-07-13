@@ -15,6 +15,15 @@ Call Center Backend is a TypeScript and Express API for call center users to man
 
 ## Latest Updates
 
+### 2026-07-13 — Individual note deletion and tutorial v2 API
+
+- **Type:** Feature
+- **Status:** In progress
+- **Summary:** Implemented account-scoped individual note deletion and tutorial version 2 on `feature/delete-call-notes-tutorial-v2`; merge into `master` remains pending.
+- **User impact:** Clients can delete one note without deleting its call, and returning users can discover updated tutorial content.
+- **Technical impact:** Added a validated note-deletion endpoint, `delete_note` realtime events, tutorial `newTopics` migration state, OpenAPI documentation, and API tests.
+- **Related area:** API
+
 ### 2026-07-13 — Secure password recovery and credential revocation
 
 - **Type:** Feature

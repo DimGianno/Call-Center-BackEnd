@@ -6,7 +6,7 @@ Staging URL: https://api-staging.call-center.dimgianno.com/
 
 Production URL: https://api.call-center.dimgianno.com/
 
-The API allows clients to manage call records, filter and paginate call lists, archive/unarchive calls, add notes to calls, delete calls, and seed sample data into the database.
+The API allows clients to manage call records, filter and paginate call lists, archive/unarchive calls, add or delete individual notes, delete calls, and seed sample data into the database.
 
 This project was built as part of a backend engineering learning assignment, with focus on REST API design, validation, error handling, persistent storage, testing, and CI/CD.
 
@@ -42,6 +42,7 @@ This project was built as part of a backend engineering learning assignment, wit
 - Archive all active calls
 - Unarchive all archived calls
 - Add notes to a call
+- Delete individual notes from a call
 - Delete a call
 - Reset calls to sample data through the API
 - Filter calls by:
@@ -367,17 +368,18 @@ Authorization: Bearer jwt-access-token
 
 All `/calls` endpoints require either a valid HttpOnly `session` cookie or, temporarily, a legacy JWT bearer token. Calls are scoped to the authenticated user.
 
-| Method | Endpoint                   | Description                               |
-| ------ | -------------------------- | ----------------------------------------- |
-| GET    | `/calls`                   | Get calls with filtering and pagination   |
-| GET    | `/calls/:callId`           | Get a single call with notes              |
-| PATCH  | `/calls/:callId/archive`   | Archive a single call                     |
-| PATCH  | `/calls/:callId/unarchive` | Unarchive a single call                   |
-| PATCH  | `/calls/archive-all`       | Archive all active calls                  |
-| PATCH  | `/calls/unarchive-all`     | Unarchive all archived calls              |
-| POST   | `/calls/reset`             | Reset current user's calls to sample data |
-| POST   | `/calls/:callId/notes`     | Add a note to a call                      |
-| DELETE | `/calls/:callId`           | Delete a call                             |
+| Method | Endpoint                       | Description                               |
+| ------ | ------------------------------ | ----------------------------------------- |
+| GET    | `/calls`                       | Get calls with filtering and pagination   |
+| GET    | `/calls/:callId`               | Get a single call with notes              |
+| PATCH  | `/calls/:callId/archive`       | Archive a single call                     |
+| PATCH  | `/calls/:callId/unarchive`     | Unarchive a single call                   |
+| PATCH  | `/calls/archive-all`           | Archive all active calls                  |
+| PATCH  | `/calls/unarchive-all`         | Unarchive all archived calls              |
+| POST   | `/calls/reset`                 | Reset current user's calls to sample data |
+| POST   | `/calls/:callId/notes`         | Add a note to a call                      |
+| DELETE | `/calls/:callId/notes/:noteId` | Delete one note from a call               |
+| DELETE | `/calls/:callId`               | Delete a call                             |
 
 ---
 
@@ -405,8 +407,8 @@ Event payload shape:
 }
 ```
 
-`action` can be `archive`, `unarchive`, `delete`, `add_note`, `archive_all`, `unarchive_all`, or
-`reset`. Bulk actions and reset may omit `callId`.
+`action` can be `archive`, `unarchive`, `delete`, `add_note`, `delete_note`, `archive_all`,
+`unarchive_all`, or `reset`. Bulk actions and reset may omit `callId`.
 
 The current implementation stores SSE clients in memory, grouped by user ID. That is appropriate
 while the backend runs as a single Render web service instance. If the service later scales to
@@ -427,11 +429,12 @@ Tutorial preference responses return:
 
 ```json
 {
-    "version": 1,
+    "version": 2,
     "hasSeenWelcome": false,
     "completedAt": null,
     "skippedAt": null,
-    "completedTopics": []
+    "completedTopics": [],
+    "newTopics": []
 }
 ```
 
@@ -444,7 +447,8 @@ Tutorial preference responses return:
 }
 ```
 
-The current tutorial version is `1`. Date fields must be ISO date strings or `null`.
+The current tutorial version is `2`. `newTopics` records updated tutorial categories that the user
+has not completed yet. Date fields must be ISO date strings or `null`.
 
 ---
 
@@ -561,6 +565,19 @@ POST /calls/:callId/notes
 ### Response
 
 Returns the updated call with its notes.
+
+---
+
+## Delete an Individual Note
+
+### Request
+
+```http
+DELETE /calls/:callId/notes/:noteId
+```
+
+The call and note must belong to the authenticated user. The endpoint returns the updated call with
+the remaining notes, `400` for an invalid identifier, or `404` when the call or note is not found.
 
 ---
 
@@ -771,6 +788,7 @@ The Swagger page documents the main API endpoints, including:
 - PATCH /calls/unarchive-all
 - POST /calls/reset
 - POST /calls/:callId/notes
+- DELETE /calls/:callId/notes/:noteId
 - DELETE /calls/:callId
 - GET /users/me/tutorial
 - PATCH /users/me/tutorial
