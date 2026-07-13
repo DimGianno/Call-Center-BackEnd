@@ -813,7 +813,7 @@ SESSION_TTL_MINUTES=10
 AUTH_DEBUG_LOGS=false
 RESEND_API_KEY=<Resend API key>
 EMAIL_FROM=<verified Resend sender>
-NEW_SIGNUP_NOTIFICATION_EMAIL=<private recipient; production only>
+NEW_SIGNUP_NOTIFICATION_EMAIL=<private signup notification recipient>
 FRONTEND_PUBLIC_URL=<deployed frontend URL>
 EMAIL_VERIFICATION_GRACE_DAYS=7
 EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=1440
@@ -839,6 +839,7 @@ API_BASE_URL=https://api-staging.call-center.dimgianno.com
 FRONTEND_ORIGINS=https://call-center-staging.dimgianno.com
 FRONTEND_PUBLIC_URL=https://call-center-staging.dimgianno.com
 MONGODB_URI=<staging MongoDB Atlas connection string>
+NEW_SIGNUP_NOTIFICATION_EMAIL=<your personal email address>
 ```
 
 Production and staging must use separate `MONGODB_URI` values. The same codebase is deployed to both
@@ -846,7 +847,8 @@ Render services, so `API_BASE_URL`, `FRONTEND_ORIGINS`, and `FRONTEND_PUBLIC_URL
 service.
 
 `NEW_SIGNUP_NOTIFICATION_EMAIL` enables a private notification for each successful signup. Set it
-only on the production Render service; the backend ignores it in staging and development. The
+on both the production and staging Render services. Each email identifies its environment in the
+subject and body; the backend ignores this setting in development and test environments. The
 recipient is stored in Render and is never exposed to the frontend.
 
 In `staging` and `production`, session cookies are sent with `HttpOnly`, `Secure`, and `SameSite=None` so browsers can include them on cross-site frontend-to-backend requests.

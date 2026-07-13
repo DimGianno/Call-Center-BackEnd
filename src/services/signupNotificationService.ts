@@ -1,6 +1,24 @@
 import type { UserDocument } from "../db/models/userDbModel.js";
 import { sendEmail } from "./emailService.js";
 
+type SignupNotificationEnvironment = {
+    key: "production" | "staging";
+    label: "Production" | "Staging";
+};
+
+const getSignupNotificationEnvironment =
+    (): SignupNotificationEnvironment | null => {
+        if (process.env.NODE_ENV === "production") {
+            return { key: "production", label: "Production" };
+        }
+
+        if (process.env.NODE_ENV === "staging") {
+            return { key: "staging", label: "Staging" };
+        }
+
+        return null;
+    };
+
 const escapeHtml = (value: string): string => {
     return value
         .replaceAll("&", "&amp;")
@@ -14,8 +32,9 @@ export const sendNewSignupNotification = async (
     user: UserDocument
 ): Promise<boolean> => {
     const notificationEmail = process.env.NEW_SIGNUP_NOTIFICATION_EMAIL?.trim();
+    const environment = getSignupNotificationEnvironment();
 
-    if (process.env.NODE_ENV !== "production" || !notificationEmail) {
+    if (!environment || !notificationEmail) {
         return false;
     }
 
@@ -24,24 +43,26 @@ export const sendNewSignupNotification = async (
 
     return sendEmail({
         to: notificationEmail,
-        subject: "[Production] New Call Center signup",
+        subject: `[${environment.label}] New Call Center signup`,
         text: [
-            "A new user signed up for the Call Center production app.",
+            "A new user signed up for the Call Center app.",
             "",
+            `Environment: ${environment.label}`,
             `Name: ${user.name}`,
             `Email: ${user.email}`,
             `User ID: ${userId}`,
             `Signed up at: ${createdAt}`
         ].join("\n"),
         html: [
-            "<p>A new user signed up for the Call Center production app.</p>",
+            "<p>A new user signed up for the Call Center app.</p>",
             "<dl>",
+            `<dt>Environment</dt><dd>${environment.label}</dd>`,
             `<dt>Name</dt><dd>${escapeHtml(user.name)}</dd>`,
             `<dt>Email</dt><dd>${escapeHtml(user.email)}</dd>`,
             `<dt>User ID</dt><dd>${escapeHtml(userId)}</dd>`,
             `<dt>Signed up at</dt><dd>${escapeHtml(createdAt)}</dd>`,
             "</dl>"
         ].join(""),
-        idempotencyKey: `new-signup/${userId}`
+        idempotencyKey: `new-signup/${environment.key}/${userId}`
     });
 };

@@ -320,7 +320,7 @@ describe("POST /auth/signup", () => {
         );
     });
 
-    test("sends a private signup notification only in production", async () => {
+    test("sends a private signup notification labeled as production", async () => {
         process.env.NODE_ENV = "production";
         process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
         const fetchMock = mockResendEmail();
@@ -361,15 +361,19 @@ describe("POST /auth/signup", () => {
             subject: "[Production] New Call Center signup",
             to: ["owner@example.com"]
         });
+        expect(payload.text).toContain("Environment: Production");
+        expect(payload.html).toContain(
+            "<dt>Environment</dt><dd>Production</dd>"
+        );
         expect(payload.text).toContain("Name: Notify <Admin>");
         expect(payload.html).toContain("Notify &lt;Admin&gt;");
         expect(payload.html).not.toContain("Notify <Admin>");
         expect(requestOptions?.headers).toMatchObject({
-            "Idempotency-Key": `new-signup/${storedUser._id.toString()}`
+            "Idempotency-Key": `new-signup/production/${storedUser._id.toString()}`
         });
     });
 
-    test("does not send the private signup notification outside production", async () => {
+    test("sends a private signup notification labeled as staging", async () => {
         process.env.NODE_ENV = "staging";
         process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
         const fetchMock = mockResendEmail();
@@ -377,6 +381,53 @@ describe("POST /auth/signup", () => {
         const response = await request(app).post("/auth/signup").send({
             name: "Staging User",
             email: "staging-user@example.com",
+            password: "password123"
+        });
+        const storedUser = await UserDbModel.findOne({
+            email: "staging-user@example.com"
+        });
+        const notificationCall = fetchMock.mock.calls.find(([, options]) => {
+            const payload = JSON.parse(String(options?.body)) as {
+                to: string[];
+            };
+
+            return payload.to.includes("owner@example.com");
+        });
+
+        expect(response.status).toBe(201);
+        expect(notificationCall).toBeDefined();
+
+        if (!notificationCall || !storedUser) {
+            throw new Error("Expected a staging signup notification");
+        }
+
+        const [, requestOptions] = notificationCall;
+        const payload = JSON.parse(String(requestOptions?.body)) as {
+            html: string;
+            subject: string;
+            text: string;
+            to: string[];
+        };
+
+        expect(payload).toMatchObject({
+            subject: "[Staging] New Call Center signup",
+            to: ["owner@example.com"]
+        });
+        expect(payload.text).toContain("Environment: Staging");
+        expect(payload.html).toContain("<dt>Environment</dt><dd>Staging</dd>");
+        expect(requestOptions?.headers).toMatchObject({
+            "Idempotency-Key": `new-signup/staging/${storedUser._id.toString()}`
+        });
+    });
+
+    test("does not send the private signup notification in development", async () => {
+        process.env.NODE_ENV = "development";
+        process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
+        const fetchMock = mockResendEmail();
+
+        const response = await request(app).post("/auth/signup").send({
+            name: "Development User",
+            email: "development-user@example.com",
             password: "password123"
         });
         const recipients = fetchMock.mock.calls.map(([, options]) => {
