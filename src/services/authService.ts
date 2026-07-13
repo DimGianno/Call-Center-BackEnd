@@ -17,6 +17,7 @@ import {
     sendVerificationEmailForUser
 } from "./emailVerificationService.js";
 import { createSession } from "./sessionService.js";
+import { sendNewSignupNotification } from "./signupNotificationService.js";
 
 const normalizeEmail = (email: string): string => {
     return email.trim().toLowerCase();
@@ -54,10 +55,19 @@ export const signupUser = async (
             ...passwordFields
         });
         const session = await createSession(user._id.toString());
-        await sendVerificationEmailForUser(user).catch((error) => {
-            console.warn("Failed to create or send verification email.", error);
-            return false;
-        });
+        await Promise.all([
+            sendVerificationEmailForUser(user).catch((error) => {
+                console.warn(
+                    "Failed to create or send verification email.",
+                    error
+                );
+                return false;
+            }),
+            sendNewSignupNotification(user).catch((error) => {
+                console.warn("Failed to send new signup notification.", error);
+                return false;
+            })
+        ]);
 
         return {
             success: true,

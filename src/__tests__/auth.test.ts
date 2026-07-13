@@ -41,6 +41,8 @@ const originalFrontendOrigins = process.env.FRONTEND_ORIGINS;
 const originalAuthDebugLogs = process.env.AUTH_DEBUG_LOGS;
 const originalResendApiKey = process.env.RESEND_API_KEY;
 const originalEmailFrom = process.env.EMAIL_FROM;
+const originalNewSignupNotificationEmail =
+    process.env.NEW_SIGNUP_NOTIFICATION_EMAIL;
 const originalFrontendPublicUrl = process.env.FRONTEND_PUBLIC_URL;
 const originalVerificationGraceDays = process.env.EMAIL_VERIFICATION_GRACE_DAYS;
 const originalVerificationTokenTtlMinutes =
@@ -135,6 +137,10 @@ afterEach(() => {
     restoreEnvValue("AUTH_DEBUG_LOGS", originalAuthDebugLogs);
     restoreEnvValue("RESEND_API_KEY", originalResendApiKey);
     restoreEnvValue("EMAIL_FROM", originalEmailFrom);
+    restoreEnvValue(
+        "NEW_SIGNUP_NOTIFICATION_EMAIL",
+        originalNewSignupNotificationEmail
+    );
     restoreEnvValue("FRONTEND_PUBLIC_URL", originalFrontendPublicUrl);
     restoreEnvValue(
         "EMAIL_VERIFICATION_GRACE_DAYS",
@@ -312,6 +318,106 @@ describe("POST /auth/signup", () => {
                 method: "POST"
             })
         );
+    });
+
+    test("sends a private signup notification only in production", async () => {
+        process.env.NODE_ENV = "production";
+        process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
+        const fetchMock = mockResendEmail();
+
+        const response = await request(app).post("/auth/signup").send({
+            name: "Notify <Admin>",
+            email: "notify@example.com",
+            password: "password123"
+        });
+        const storedUser = await UserDbModel.findOne({
+            email: "notify@example.com"
+        });
+        const notificationCall = fetchMock.mock.calls.find(([, options]) => {
+            const payload = JSON.parse(String(options?.body)) as {
+                to: string[];
+            };
+
+            return payload.to.includes("owner@example.com");
+        });
+
+        expect(response.status).toBe(201);
+        expect(storedUser).not.toBeNull();
+        expect(notificationCall).toBeDefined();
+
+        if (!notificationCall || !storedUser) {
+            throw new Error("Expected a production signup notification");
+        }
+
+        const [, requestOptions] = notificationCall;
+        const payload = JSON.parse(String(requestOptions?.body)) as {
+            html: string;
+            subject: string;
+            text: string;
+            to: string[];
+        };
+
+        expect(payload).toMatchObject({
+            subject: "[Production] New Call Center signup",
+            to: ["owner@example.com"]
+        });
+        expect(payload.text).toContain("Name: Notify <Admin>");
+        expect(payload.html).toContain("Notify &lt;Admin&gt;");
+        expect(payload.html).not.toContain("Notify <Admin>");
+        expect(requestOptions?.headers).toMatchObject({
+            "Idempotency-Key": `new-signup/${storedUser._id.toString()}`
+        });
+    });
+
+    test("does not send the private signup notification outside production", async () => {
+        process.env.NODE_ENV = "staging";
+        process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
+        const fetchMock = mockResendEmail();
+
+        const response = await request(app).post("/auth/signup").send({
+            name: "Staging User",
+            email: "staging-user@example.com",
+            password: "password123"
+        });
+        const recipients = fetchMock.mock.calls.map(([, options]) => {
+            const payload = JSON.parse(String(options?.body)) as {
+                to: string[];
+            };
+
+            return payload.to;
+        });
+
+        expect(response.status).toBe(201);
+        expect(recipients).not.toContainEqual(["owner@example.com"]);
+    });
+
+    test("keeps signup successful when the private notification fails", async () => {
+        process.env.NODE_ENV = "production";
+        process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
+        process.env.RESEND_API_KEY = "test-resend-key";
+        process.env.EMAIL_FROM = "Call Center <verify@example.com>";
+        process.env.FRONTEND_PUBLIC_URL = "https://frontend.example.com";
+        jest.spyOn(console, "warn").mockImplementation(() => undefined);
+        jest.spyOn(global, "fetch").mockImplementation(async (_url, init) => {
+            const payload = JSON.parse(String(init?.body)) as {
+                to: string[];
+            };
+            const status = payload.to.includes("owner@example.com") ? 500 : 200;
+
+            return new Response(null, { status });
+        });
+
+        const response = await request(app).post("/auth/signup").send({
+            name: "Resilient User",
+            email: "resilient@example.com",
+            password: "password123"
+        });
+
+        expect(response.status).toBe(201);
+        expect(
+            await UserDbModel.exists({ email: "resilient@example.com" })
+        ).not.toBeNull();
+        expect(await SessionDbModel.countDocuments({})).toBe(1);
     });
 
     test("rejects duplicate emails after normalization", async () => {
