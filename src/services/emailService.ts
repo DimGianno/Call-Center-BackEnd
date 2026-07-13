@@ -1,5 +1,6 @@
 type SendEmailInput = {
     html: string;
+    idempotencyKey?: string;
     subject: string;
     text: string;
     to: string;
@@ -37,7 +38,10 @@ export const sendEmail = async (input: SendEmailInput): Promise<boolean> => {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                ...(input.idempotencyKey
+                    ? { "Idempotency-Key": input.idempotencyKey }
+                    : {})
             },
             body: JSON.stringify(payload)
         });

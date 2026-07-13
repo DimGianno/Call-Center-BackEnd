@@ -10,6 +10,11 @@ The API allows clients to manage call records, filter and paginate call lists, a
 
 This project was built as part of a backend engineering learning assignment, with focus on REST API design, validation, error handling, persistent storage, testing, and CI/CD.
 
+## Project Documentation
+
+- [Project updates](PROJECT_UPDATES.md)
+- [Project roadmap](PROJECT_ROADMAP.md)
+
 ## Features Implemented
 
 ### Core Features
@@ -193,6 +198,8 @@ FRONTEND_PUBLIC_URL=http://localhost:5173
 EMAIL_VERIFICATION_GRACE_DAYS=7
 EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=1440
 EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS=60
+PASSWORD_RESET_TOKEN_TTL_MINUTES=60
+PASSWORD_RESET_RESEND_COOLDOWN_SECONDS=60
 ```
 
 Make sure `.env` is included in `.gitignore` so your database password is not pushed to GitHub.
@@ -288,6 +295,9 @@ npm run start
 | ------ | --------------------------- | -------------------------------------------- |
 | POST   | `/auth/signup`              | Create a user and start a server session     |
 | POST   | `/auth/login`               | Log in a user and start a server session     |
+| POST   | `/auth/forgot-password`     | Request a generic password reset email       |
+| POST   | `/auth/reset-password`      | Reset a password with an emailed token       |
+| POST   | `/auth/change-password`     | Change the authenticated user's password     |
 | POST   | `/auth/refresh`             | Refresh the current cookie session           |
 | POST   | `/auth/resend-verification` | Resend the current user's verification email |
 | POST   | `/auth/verify-email`        | Verify an email verification token           |
@@ -327,6 +337,11 @@ refresh, and protected API routes return:
 
 Verification emails are sent through Resend. Verification tokens are stored hashed, expire after 24
 hours by default, and can be used once.
+
+Password reset emails are also sent through Resend. Reset tokens are stored only as SHA-256 hashes,
+expire after 60 minutes by default, and can be used once. Successful password resets and authenticated
+password changes revoke all cookie sessions and previously issued bearer tokens. Forgot-password
+requests always return the same response for existing and unknown accounts.
 
 Browser clients should send the cookie on protected requests:
 
@@ -745,6 +760,9 @@ The Swagger page documents the main API endpoints, including:
 
 - POST /auth/signup
 - POST /auth/login
+- POST /auth/forgot-password
+- POST /auth/reset-password
+- POST /auth/change-password
 - GET /calls
 - GET /calls/:callId
 - PATCH /calls/:callId/archive
@@ -813,10 +831,13 @@ SESSION_TTL_MINUTES=10
 AUTH_DEBUG_LOGS=false
 RESEND_API_KEY=<Resend API key>
 EMAIL_FROM=<verified Resend sender>
+NEW_SIGNUP_NOTIFICATION_EMAIL=<private signup notification recipient>
 FRONTEND_PUBLIC_URL=<deployed frontend URL>
 EMAIL_VERIFICATION_GRACE_DAYS=7
 EMAIL_VERIFICATION_TOKEN_TTL_MINUTES=1440
 EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS=60
+PASSWORD_RESET_TOKEN_TTL_MINUTES=60
+PASSWORD_RESET_RESEND_COOLDOWN_SECONDS=60
 ```
 
 Production Render service:
@@ -827,6 +848,7 @@ API_BASE_URL=https://api.call-center.dimgianno.com
 FRONTEND_ORIGINS=https://call-center.dimgianno.com
 FRONTEND_PUBLIC_URL=https://call-center.dimgianno.com
 MONGODB_URI=<production MongoDB Atlas connection string>
+NEW_SIGNUP_NOTIFICATION_EMAIL=<your personal email address>
 ```
 
 Staging Render service:
@@ -837,11 +859,17 @@ API_BASE_URL=https://api-staging.call-center.dimgianno.com
 FRONTEND_ORIGINS=https://call-center-staging.dimgianno.com
 FRONTEND_PUBLIC_URL=https://call-center-staging.dimgianno.com
 MONGODB_URI=<staging MongoDB Atlas connection string>
+NEW_SIGNUP_NOTIFICATION_EMAIL=<your personal email address>
 ```
 
 Production and staging must use separate `MONGODB_URI` values. The same codebase is deployed to both
 Render services, so `API_BASE_URL`, `FRONTEND_ORIGINS`, and `FRONTEND_PUBLIC_URL` must be set per
 service.
+
+`NEW_SIGNUP_NOTIFICATION_EMAIL` enables a private notification for each successful signup. Set it
+on both the production and staging Render services. Each email identifies its environment in the
+subject and body; the backend ignores this setting in development and test environments. The
+recipient is stored in Render and is never exposed to the frontend.
 
 In `staging` and `production`, session cookies are sent with `HttpOnly`, `Secure`, and `SameSite=None` so browsers can include them on cross-site frontend-to-backend requests.
 
@@ -869,6 +897,9 @@ GET /health
 GET /api-docs
 POST /auth/signup
 POST /auth/login
+POST /auth/forgot-password
+POST /auth/reset-password
+POST /auth/change-password
 GET /calls
 ```
 
@@ -910,21 +941,6 @@ MongoDB is the source of truth for the application.
 Calls are stored as MongoDB documents. Notes are embedded inside each call document.
 
 The API maps MongoDB `_id` fields to `id` in responses so clients do not need to work directly with MongoDB-specific field names.
-
----
-
-## Known Limitations
-
-If I had more time, I would improve the project by adding:
-
-- Account-wide session revocation controls
-- More complete request validation across all endpoints
-- More advanced logging
-- Rate limiting
-- Separate production environment in addition to development and staging
-- Search by phone number or note content
-- Update/edit note functionality
-- Delete note functionality
 
 ---
 

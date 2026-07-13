@@ -17,6 +17,7 @@ import {
     sendVerificationEmailForUser
 } from "./emailVerificationService.js";
 import { createSession } from "./sessionService.js";
+import { sendNewSignupNotification } from "./signupNotificationService.js";
 
 const normalizeEmail = (email: string): string => {
     return email.trim().toLowerCase();
@@ -54,16 +55,27 @@ export const signupUser = async (
             ...passwordFields
         });
         const session = await createSession(user._id.toString());
-        await sendVerificationEmailForUser(user).catch((error) => {
-            console.warn("Failed to create or send verification email.", error);
-            return false;
-        });
+        await Promise.all([
+            sendVerificationEmailForUser(user).catch((error) => {
+                console.warn(
+                    "Failed to create or send verification email.",
+                    error
+                );
+                return false;
+            }),
+            sendNewSignupNotification(user).catch((error) => {
+                console.warn("Failed to send new signup notification.", error);
+                return false;
+            })
+        ]);
 
         return {
             success: true,
             data: {
                 user: mapUserDocumentToUser(user),
-                accessToken: signAccessToken(user._id.toString()),
+                accessToken: signAccessToken(user._id.toString(), {
+                    tokenVersion: user.auth_token_version ?? 0
+                }),
                 emailVerification: getEmailVerificationStatus(user),
                 sessionToken: session.sessionToken,
                 sessionExpiresAt: session.expiresAt.toISOString()
@@ -126,7 +138,9 @@ export const loginUser = async (
         success: true,
         data: {
             user: mapUserDocumentToUser(user),
-            accessToken: signAccessToken(user._id.toString()),
+            accessToken: signAccessToken(user._id.toString(), {
+                tokenVersion: user.auth_token_version ?? 0
+            }),
             emailVerification: getEmailVerificationStatus(user),
             sessionToken: session.sessionToken,
             sessionExpiresAt: session.expiresAt.toISOString()

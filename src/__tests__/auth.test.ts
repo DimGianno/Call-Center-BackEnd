@@ -5,9 +5,11 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 
 import app from "../app.js";
 import { EmailVerificationTokenDbModel } from "../db/models/emailVerificationTokenDbModel.js";
+import { PasswordResetTokenDbModel } from "../db/models/passwordResetTokenDbModel.js";
 import { SessionDbModel } from "../db/models/sessionDbModel.js";
 import { UserDbModel } from "../db/models/userDbModel.js";
 import { hashEmailVerificationToken } from "../services/emailVerificationService.js";
+import { hashPasswordResetToken } from "../services/passwordResetService.js";
 import { hashSessionToken } from "../services/sessionService.js";
 import { signAccessToken } from "../utils/jwt.js";
 import { SESSION_COOKIE_NAME } from "../utils/sessionCookie.js";
@@ -41,12 +43,18 @@ const originalFrontendOrigins = process.env.FRONTEND_ORIGINS;
 const originalAuthDebugLogs = process.env.AUTH_DEBUG_LOGS;
 const originalResendApiKey = process.env.RESEND_API_KEY;
 const originalEmailFrom = process.env.EMAIL_FROM;
+const originalNewSignupNotificationEmail =
+    process.env.NEW_SIGNUP_NOTIFICATION_EMAIL;
 const originalFrontendPublicUrl = process.env.FRONTEND_PUBLIC_URL;
 const originalVerificationGraceDays = process.env.EMAIL_VERIFICATION_GRACE_DAYS;
 const originalVerificationTokenTtlMinutes =
     process.env.EMAIL_VERIFICATION_TOKEN_TTL_MINUTES;
 const originalVerificationResendCooldownSeconds =
     process.env.EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS;
+const originalPasswordResetTokenTtlMinutes =
+    process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES;
+const originalPasswordResetResendCooldownSeconds =
+    process.env.PASSWORD_RESET_RESEND_COOLDOWN_SECONDS;
 
 const restoreEnvValue = (name: string, value: string | undefined) => {
     if (value === undefined) {
@@ -115,6 +123,47 @@ const mockResendEmail = () => {
     );
 };
 
+const getSentEmailPayload = (
+    fetchMock: ReturnType<typeof mockResendEmail>,
+    subject: string
+) => {
+    const matchingCall = fetchMock.mock.calls.find(([, options]) => {
+        const payload = JSON.parse(String(options?.body)) as {
+            subject: string;
+        };
+
+        return payload.subject === subject;
+    });
+
+    if (!matchingCall) {
+        throw new Error(`Expected an email with subject: ${subject}`);
+    }
+
+    return JSON.parse(String(matchingCall[1]?.body)) as {
+        html: string;
+        subject: string;
+        text: string;
+        to: string[];
+    };
+};
+
+const getPasswordResetTokenFromEmail = (
+    fetchMock: ReturnType<typeof mockResendEmail>
+) => {
+    const payload = getSentEmailPayload(
+        fetchMock,
+        "Reset your Call Center password"
+    );
+    const resetUrl = new URL(payload.text.replace("Reset your password: ", ""));
+    const token = resetUrl.searchParams.get("token");
+
+    if (!token) {
+        throw new Error("Expected password reset token in email URL");
+    }
+
+    return token;
+};
+
 beforeAll(async () => {
     process.env.JWT_SECRET = "test-jwt-secret";
     mongoServer = await MongoMemoryServer.create();
@@ -125,6 +174,7 @@ beforeAll(async () => {
 beforeEach(async () => {
     jest.restoreAllMocks();
     await EmailVerificationTokenDbModel.deleteMany({});
+    await PasswordResetTokenDbModel.deleteMany({});
     await SessionDbModel.deleteMany({});
     await UserDbModel.deleteMany({});
 });
@@ -135,6 +185,10 @@ afterEach(() => {
     restoreEnvValue("AUTH_DEBUG_LOGS", originalAuthDebugLogs);
     restoreEnvValue("RESEND_API_KEY", originalResendApiKey);
     restoreEnvValue("EMAIL_FROM", originalEmailFrom);
+    restoreEnvValue(
+        "NEW_SIGNUP_NOTIFICATION_EMAIL",
+        originalNewSignupNotificationEmail
+    );
     restoreEnvValue("FRONTEND_PUBLIC_URL", originalFrontendPublicUrl);
     restoreEnvValue(
         "EMAIL_VERIFICATION_GRACE_DAYS",
@@ -147,6 +201,14 @@ afterEach(() => {
     restoreEnvValue(
         "EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS",
         originalVerificationResendCooldownSeconds
+    );
+    restoreEnvValue(
+        "PASSWORD_RESET_TOKEN_TTL_MINUTES",
+        originalPasswordResetTokenTtlMinutes
+    );
+    restoreEnvValue(
+        "PASSWORD_RESET_RESEND_COOLDOWN_SECONDS",
+        originalPasswordResetResendCooldownSeconds
     );
 });
 
@@ -220,6 +282,9 @@ describe("cross-site session cookie and CORS behavior", () => {
     test.each([
         ["/auth/signup", "POST"],
         ["/auth/login", "POST"],
+        ["/auth/forgot-password", "POST"],
+        ["/auth/reset-password", "POST"],
+        ["/auth/change-password", "POST"],
         ["/auth/refresh", "POST"],
         ["/calls", "GET"]
     ])("allows credentialed preflight for %s", async (path, method) => {
@@ -312,6 +377,157 @@ describe("POST /auth/signup", () => {
                 method: "POST"
             })
         );
+    });
+
+    test("sends a private signup notification labeled as production", async () => {
+        process.env.NODE_ENV = "production";
+        process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
+        const fetchMock = mockResendEmail();
+
+        const response = await request(app).post("/auth/signup").send({
+            name: "Notify <Admin>",
+            email: "notify@example.com",
+            password: "password123"
+        });
+        const storedUser = await UserDbModel.findOne({
+            email: "notify@example.com"
+        });
+        const notificationCall = fetchMock.mock.calls.find(([, options]) => {
+            const payload = JSON.parse(String(options?.body)) as {
+                to: string[];
+            };
+
+            return payload.to.includes("owner@example.com");
+        });
+
+        expect(response.status).toBe(201);
+        expect(storedUser).not.toBeNull();
+        expect(notificationCall).toBeDefined();
+
+        if (!notificationCall || !storedUser) {
+            throw new Error("Expected a production signup notification");
+        }
+
+        const [, requestOptions] = notificationCall;
+        const payload = JSON.parse(String(requestOptions?.body)) as {
+            html: string;
+            subject: string;
+            text: string;
+            to: string[];
+        };
+
+        expect(payload).toMatchObject({
+            subject: "[Production] New Call Center signup",
+            to: ["owner@example.com"]
+        });
+        expect(payload.text).toContain("Environment: Production");
+        expect(payload.html).toContain(
+            "<dt>Environment</dt><dd>Production</dd>"
+        );
+        expect(payload.text).toContain("Name: Notify <Admin>");
+        expect(payload.html).toContain("Notify &lt;Admin&gt;");
+        expect(payload.html).not.toContain("Notify <Admin>");
+        expect(requestOptions?.headers).toMatchObject({
+            "Idempotency-Key": `new-signup/production/${storedUser._id.toString()}`
+        });
+    });
+
+    test("sends a private signup notification labeled as staging", async () => {
+        process.env.NODE_ENV = "staging";
+        process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
+        const fetchMock = mockResendEmail();
+
+        const response = await request(app).post("/auth/signup").send({
+            name: "Staging User",
+            email: "staging-user@example.com",
+            password: "password123"
+        });
+        const storedUser = await UserDbModel.findOne({
+            email: "staging-user@example.com"
+        });
+        const notificationCall = fetchMock.mock.calls.find(([, options]) => {
+            const payload = JSON.parse(String(options?.body)) as {
+                to: string[];
+            };
+
+            return payload.to.includes("owner@example.com");
+        });
+
+        expect(response.status).toBe(201);
+        expect(notificationCall).toBeDefined();
+
+        if (!notificationCall || !storedUser) {
+            throw new Error("Expected a staging signup notification");
+        }
+
+        const [, requestOptions] = notificationCall;
+        const payload = JSON.parse(String(requestOptions?.body)) as {
+            html: string;
+            subject: string;
+            text: string;
+            to: string[];
+        };
+
+        expect(payload).toMatchObject({
+            subject: "[Staging] New Call Center signup",
+            to: ["owner@example.com"]
+        });
+        expect(payload.text).toContain("Environment: Staging");
+        expect(payload.html).toContain("<dt>Environment</dt><dd>Staging</dd>");
+        expect(requestOptions?.headers).toMatchObject({
+            "Idempotency-Key": `new-signup/staging/${storedUser._id.toString()}`
+        });
+    });
+
+    test("does not send the private signup notification in development", async () => {
+        process.env.NODE_ENV = "development";
+        process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
+        const fetchMock = mockResendEmail();
+
+        const response = await request(app).post("/auth/signup").send({
+            name: "Development User",
+            email: "development-user@example.com",
+            password: "password123"
+        });
+        const recipients = fetchMock.mock.calls.map(([, options]) => {
+            const payload = JSON.parse(String(options?.body)) as {
+                to: string[];
+            };
+
+            return payload.to;
+        });
+
+        expect(response.status).toBe(201);
+        expect(recipients).not.toContainEqual(["owner@example.com"]);
+    });
+
+    test("keeps signup successful when the private notification fails", async () => {
+        process.env.NODE_ENV = "production";
+        process.env.NEW_SIGNUP_NOTIFICATION_EMAIL = "owner@example.com";
+        process.env.RESEND_API_KEY = "test-resend-key";
+        process.env.EMAIL_FROM = "Call Center <verify@example.com>";
+        process.env.FRONTEND_PUBLIC_URL = "https://frontend.example.com";
+        jest.spyOn(console, "warn").mockImplementation(() => undefined);
+        jest.spyOn(global, "fetch").mockImplementation(async (_url, init) => {
+            const payload = JSON.parse(String(init?.body)) as {
+                to: string[];
+            };
+            const status = payload.to.includes("owner@example.com") ? 500 : 200;
+
+            return new Response(null, { status });
+        });
+
+        const response = await request(app).post("/auth/signup").send({
+            name: "Resilient User",
+            email: "resilient@example.com",
+            password: "password123"
+        });
+
+        expect(response.status).toBe(201);
+        expect(
+            await UserDbModel.exists({ email: "resilient@example.com" })
+        ).not.toBeNull();
+        expect(await SessionDbModel.countDocuments({})).toBe(1);
     });
 
     test("rejects duplicate emails after normalization", async () => {
@@ -424,6 +640,278 @@ describe("email verification", () => {
             "If this account needs verification"
         );
         expect(tokenCountAfter).toBe(tokenCountBefore);
+    });
+});
+
+describe("password recovery", () => {
+    test("returns the same response for known and unknown accounts and stores only a token hash", async () => {
+        await request(app).post("/auth/signup").send({
+            name: "Recovery User",
+            email: "recovery@example.com",
+            password: "password123"
+        });
+        const fetchMock = mockResendEmail();
+
+        const knownResponse = await request(app)
+            .post("/auth/forgot-password")
+            .send({ email: " RECOVERY@example.com " });
+        const unknownResponse = await request(app)
+            .post("/auth/forgot-password")
+            .send({ email: "unknown@example.com" });
+        const token = getPasswordResetTokenFromEmail(fetchMock);
+        const storedToken = await PasswordResetTokenDbModel.findOne({});
+
+        expect(knownResponse.status).toBe(200);
+        expect(unknownResponse.status).toBe(200);
+        expect(unknownResponse.body).toEqual(knownResponse.body);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(storedToken?.token_hash).toBe(hashPasswordResetToken(token));
+        expect(storedToken?.token_hash).not.toBe(token);
+        expect(storedToken?.sent_at).toBeInstanceOf(Date);
+    });
+
+    test("enforces the successful-send cooldown", async () => {
+        await request(app).post("/auth/signup").send({
+            name: "Cooldown User",
+            email: "cooldown@example.com",
+            password: "password123"
+        });
+        const fetchMock = mockResendEmail();
+
+        await request(app)
+            .post("/auth/forgot-password")
+            .send({ email: "cooldown@example.com" });
+        await request(app)
+            .post("/auth/forgot-password")
+            .send({ email: "cooldown@example.com" });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(await PasswordResetTokenDbModel.countDocuments({})).toBe(1);
+    });
+
+    test("preserves the older valid token when replacement email delivery fails", async () => {
+        await request(app).post("/auth/signup").send({
+            name: "Delivery User",
+            email: "delivery@example.com",
+            password: "password123"
+        });
+        const successfulFetch = mockResendEmail();
+
+        await request(app)
+            .post("/auth/forgot-password")
+            .send({ email: "delivery@example.com" });
+        const originalToken = getPasswordResetTokenFromEmail(successfulFetch);
+        const originalTokenDocument =
+            await PasswordResetTokenDbModel.findOneAndUpdate(
+                { token_hash: hashPasswordResetToken(originalToken) },
+                { sent_at: new Date(Date.now() - 120_000) },
+                { returnDocument: "after" }
+            );
+
+        jest.restoreAllMocks();
+        process.env.RESEND_API_KEY = "test-resend-key";
+        process.env.EMAIL_FROM = "Call Center <verify@example.com>";
+        jest.spyOn(global, "fetch").mockResolvedValue(
+            new Response(null, { status: 500 })
+        );
+
+        const response = await request(app)
+            .post("/auth/forgot-password")
+            .send({ email: "delivery@example.com" });
+        const remainingTokens = await PasswordResetTokenDbModel.find({});
+
+        expect(response.status).toBe(200);
+        expect(remainingTokens).toHaveLength(1);
+        expect(remainingTokens[0]?._id.toString()).toBe(
+            originalTokenDocument?._id.toString()
+        );
+        expect(remainingTokens[0]?.used_at).toBeNull();
+    });
+
+    test("resets a password once and revokes cookie and bearer sessions", async () => {
+        const fetchMock = mockResendEmail();
+        const signupResponse = await request(app).post("/auth/signup").send({
+            name: "Reset User",
+            email: "reset@example.com",
+            password: "password123"
+        });
+        const sessionCookie = getSessionCookieHeader(signupResponse);
+        const oldAccessToken = (signupResponse.body as AuthResponseBody)
+            .accessToken;
+        const verificationRequiredAt = (signupResponse.body as AuthResponseBody)
+            .user.email_verification_required_at;
+
+        await request(app)
+            .post("/auth/forgot-password")
+            .send({ email: "reset@example.com" });
+        const token = getPasswordResetTokenFromEmail(fetchMock);
+
+        const resetResponse = await request(app)
+            .post("/auth/reset-password")
+            .set("Cookie", sessionCookie)
+            .send({ token, password: "new-password123" });
+        const oldPasswordResponse = await request(app)
+            .post("/auth/login")
+            .send({ email: "reset@example.com", password: "password123" });
+        const newPasswordResponse = await request(app)
+            .post("/auth/login")
+            .send({
+                email: "reset@example.com",
+                password: "new-password123"
+            });
+        const reusedTokenResponse = await request(app)
+            .post("/auth/reset-password")
+            .send({ token, password: "another-password123" });
+        const oldBearerResponse = await request(app)
+            .get("/calls")
+            .set("Authorization", `Bearer ${oldAccessToken}`);
+        const storedUser = await UserDbModel.findOne({
+            email: "reset@example.com"
+        });
+
+        expect(resetResponse.status).toBe(200);
+        expect(getSessionSetCookie(resetResponse)).toContain(
+            `${SESSION_COOKIE_NAME}=`
+        );
+        expect(oldPasswordResponse.status).toBe(401);
+        expect(newPasswordResponse.status).toBe(200);
+        expect(reusedTokenResponse.status).toBe(400);
+        expect(oldBearerResponse.status).toBe(401);
+        expect(await SessionDbModel.countDocuments({})).toBe(1);
+        expect(storedUser?.auth_token_version).toBe(1);
+        expect(storedUser?.email_verification_required_at?.toISOString()).toBe(
+            verificationRequiredAt
+        );
+        expect(storedUser?.email_verified_at).toBeNull();
+    });
+
+    test("rejects missing, expired, and unchanged password reset attempts", async () => {
+        await request(app).post("/auth/signup").send({
+            name: "Expired Reset User",
+            email: "expired-reset@example.com",
+            password: "password123"
+        });
+        const user = await UserDbModel.findOne({
+            email: "expired-reset@example.com"
+        });
+
+        if (!user) {
+            throw new Error("Expected reset test user");
+        }
+
+        const expiredToken = "expired-password-reset-token";
+        const unchangedToken = "unchanged-password-reset-token";
+
+        await PasswordResetTokenDbModel.create([
+            {
+                user_id: user._id,
+                token_hash: hashPasswordResetToken(expiredToken),
+                expires_at: new Date(Date.now() - 1000),
+                sent_at: new Date(Date.now() - 2000)
+            },
+            {
+                user_id: user._id,
+                token_hash: hashPasswordResetToken(unchangedToken),
+                expires_at: new Date(Date.now() + 60_000),
+                sent_at: new Date()
+            }
+        ]);
+
+        const missingResponse = await request(app)
+            .post("/auth/reset-password")
+            .send({ password: "new-password123" });
+        const expiredResponse = await request(app)
+            .post("/auth/reset-password")
+            .send({ token: expiredToken, password: "new-password123" });
+        const unchangedResponse = await request(app)
+            .post("/auth/reset-password")
+            .send({ token: unchangedToken, password: "password123" });
+
+        expect(missingResponse.status).toBe(400);
+        expect(expiredResponse.status).toBe(400);
+        expect(unchangedResponse.status).toBe(400);
+        expect(unchangedResponse.body.error).toContain("must be different");
+    });
+});
+
+describe("POST /auth/change-password", () => {
+    test("requires authentication and validates the current and new passwords", async () => {
+        const signupResponse = await request(app).post("/auth/signup").send({
+            name: "Change User",
+            email: "change@example.com",
+            password: "password123"
+        });
+        const sessionCookie = getSessionCookieHeader(signupResponse);
+
+        const unauthenticatedResponse = await request(app)
+            .post("/auth/change-password")
+            .send({
+                currentPassword: "password123",
+                newPassword: "new-password123"
+            });
+        const incorrectResponse = await request(app)
+            .post("/auth/change-password")
+            .set("Cookie", sessionCookie)
+            .send({
+                currentPassword: "wrong-password",
+                newPassword: "new-password123"
+            });
+        const unchangedResponse = await request(app)
+            .post("/auth/change-password")
+            .set("Cookie", sessionCookie)
+            .send({
+                currentPassword: "password123",
+                newPassword: "password123"
+            });
+
+        expect(unauthenticatedResponse.status).toBe(401);
+        expect(incorrectResponse.status).toBe(400);
+        expect(incorrectResponse.body.error).toBe(
+            "Current password is incorrect"
+        );
+        expect(unchangedResponse.status).toBe(400);
+        expect(await SessionDbModel.countDocuments({})).toBe(1);
+    });
+
+    test("changes the password and revokes every existing credential", async () => {
+        const signupResponse = await request(app).post("/auth/signup").send({
+            name: "Change Success User",
+            email: "change-success@example.com",
+            password: "password123"
+        });
+        const secondLoginResponse = await request(app)
+            .post("/auth/login")
+            .send({
+                email: "change-success@example.com",
+                password: "password123"
+            });
+        const sessionCookie = getSessionCookieHeader(signupResponse);
+        const oldAccessToken = (secondLoginResponse.body as AuthResponseBody)
+            .accessToken;
+
+        const changeResponse = await request(app)
+            .post("/auth/change-password")
+            .set("Cookie", sessionCookie)
+            .send({
+                currentPassword: "password123",
+                newPassword: "new-password123"
+            });
+        const oldCookieResponse = await request(app)
+            .get("/calls")
+            .set("Cookie", sessionCookie);
+        const oldBearerResponse = await request(app)
+            .get("/calls")
+            .set("Authorization", `Bearer ${oldAccessToken}`);
+        const newLoginResponse = await request(app).post("/auth/login").send({
+            email: "change-success@example.com",
+            password: "new-password123"
+        });
+
+        expect(changeResponse.status).toBe(200);
+        expect(oldCookieResponse.status).toBe(401);
+        expect(oldBearerResponse.status).toBe(401);
+        expect(newLoginResponse.status).toBe(200);
+        expect(await SessionDbModel.countDocuments({})).toBe(1);
     });
 });
 
