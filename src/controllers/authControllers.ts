@@ -286,11 +286,17 @@ export const forgotPasswordController = async (req: Request, res: Response) => {
         return;
     }
 
-    await requestPasswordReset(parsedBody.data.email);
+    const accountExists = await requestPasswordReset(parsedBody.data.email);
+
+    if (!accountExists) {
+        res.status(404).json({
+            error: "No account found with this email address."
+        });
+        return;
+    }
 
     res.status(200).json({
-        message:
-            "If an account exists for this email, a password reset link will be sent shortly."
+        message: "Password reset link requested successfully."
     });
 };
 

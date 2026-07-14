@@ -156,9 +156,11 @@ router.post("/login", loginController);
  *                 format: email
  *     responses:
  *       200:
- *         description: Generic password reset request response.
+ *         description: Password reset request accepted.
  *       400:
  *         description: Invalid request body.
+ *       404:
+ *         description: No account exists for the supplied email address.
  */
 router.post("/forgot-password", forgotPasswordController);
 

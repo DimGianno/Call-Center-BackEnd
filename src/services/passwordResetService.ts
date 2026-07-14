@@ -73,13 +73,17 @@ const hasRecentPasswordResetEmail = async (userId: string) => {
     );
 };
 
-export const requestPasswordReset = async (email: string): Promise<void> => {
+export const requestPasswordReset = async (email: string): Promise<boolean> => {
     const user = await UserDbModel.findOne({
         email: email.trim().toLowerCase()
     });
 
-    if (!user || (await hasRecentPasswordResetEmail(user._id.toString()))) {
-        return;
+    if (!user) {
+        return false;
+    }
+
+    if (await hasRecentPasswordResetEmail(user._id.toString())) {
+        return true;
     }
 
     const token = randomBytes(32).toString("base64url");
@@ -99,7 +103,7 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
 
     if (!sent) {
         await PasswordResetTokenDbModel.deleteOne({ _id: tokenDocument._id });
-        return;
+        return true;
     }
 
     const sentAt = new Date();
@@ -117,6 +121,8 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
             { used_at: sentAt }
         )
     ]);
+
+    return true;
 };
 
 const getUnchangedPasswordError = async (
