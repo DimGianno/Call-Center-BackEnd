@@ -4,17 +4,7 @@
 
 - **Project maturity:** Production-ready
 - **Actively developed:** Yes
-- **Last reviewed:** 2026-07-14
-
-## Active Work
-
-### Complete account-aware password recovery
-
-- **Priority:** High
-- **Status:** In progress
-- **Progress:** Unknown forgot-password emails now produce a tested `404` response without creating a reset token or sending email.
-- **Remaining work:** Commit, merge, and deploy the coordinated backend and frontend branches.
-- **Security decision:** The explicit not-found response improves user guidance but intentionally reveals whether an email address is registered; route-sensitive rate limiting remains a planned mitigation against automated discovery.
+- **Last reviewed:** 2026-07-15
 
 ## Known Limitations
 
@@ -32,9 +22,9 @@
 
 - **Area:** Security
 - **Severity:** High
-- **User impact:** Automated or excessive requests could degrade service availability or abuse authentication and email-related endpoints.
-- **Technical impact:** The API has targeted email resend cooldowns but no repository-wide request throttling layer.
-- **Current workaround:** Email verification and password reset requests have configurable resend cooldowns.
+- **User impact:** Automated or excessive requests could degrade service availability, abuse authentication and email-related endpoints, or enumerate registered email addresses through forgot-password responses.
+- **Technical impact:** The API returns `404` for unknown forgot-password emails and has targeted email resend cooldowns, but no repository-wide request throttling layer.
+- **Current workaround:** Email verification and password reset requests have configurable resend cooldowns; these reduce repeated email delivery but do not prevent unknown-email probing.
 - **Suggested resolution:** Add route-sensitive rate limits, with stricter policies for authentication, password recovery, and email delivery endpoints.
 - **Status:** Known
 
