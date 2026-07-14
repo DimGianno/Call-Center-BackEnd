@@ -2,7 +2,7 @@
 
 ## Latest Stable State
 
-- **Last updated:** 2026-07-13
+- **Last updated:** 2026-07-14
 - **Current version:** 1.0.0
 - **Current status:** Active
 - **Primary branch:** `master`
@@ -18,8 +18,8 @@ Call Center Backend is a TypeScript and Express API for call center users to man
 ### 2026-07-13 — Individual note deletion and tutorial v2 API
 
 - **Type:** Feature
-- **Status:** In progress
-- **Summary:** Implemented account-scoped individual note deletion and tutorial version 2 on `feature/delete-call-notes-tutorial-v2`; merge into `master` remains pending.
+- **Status:** Completed
+- **Summary:** Added account-scoped individual note deletion and tutorial version 2 to `master`.
 - **User impact:** Clients can delete one note without deleting its call, and returning users can discover updated tutorial content.
 - **Technical impact:** Added a validated note-deletion endpoint, `delete_note` realtime events, tutorial `newTopics` migration state, OpenAPI documentation, and API tests.
 - **Related area:** API
@@ -56,7 +56,7 @@ Call Center Backend is a TypeScript and Express API for call center users to man
 - **Type:** Feature
 - **Status:** Completed
 - **Summary:** Added an authenticated Server-Sent Events endpoint that broadcasts successful call mutations to the same user's active clients.
-- **User impact:** A user's open clients can refresh call data when calls are archived, restored, deleted, reset, or given a new note.
+- **User impact:** A user's open clients can refresh call data when calls are archived, restored, deleted, reset, or when notes are added or deleted.
 - **Technical impact:** Added user-grouped in-memory SSE client management, mutation broadcasts, and tests for successful and failed mutation behavior.
 - **Related area:** API
 
@@ -86,7 +86,7 @@ Call Center Backend is a TypeScript and Express API for call center users to man
 - Isolate call records by authenticated user.
 - List, filter, and paginate active or archived calls.
 - Retrieve, archive, unarchive, reset, and delete call records.
-- Add notes to call records.
+- Add and delete individual notes on call records.
 - Broadcast account-scoped call changes through authenticated Server-Sent Events.
 - Store and update per-user tutorial preferences.
 - Expose health and interactive Swagger/OpenAPI documentation endpoints.
