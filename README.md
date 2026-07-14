@@ -296,7 +296,7 @@ npm run start
 | ------ | --------------------------- | -------------------------------------------- |
 | POST   | `/auth/signup`              | Create a user and start a server session     |
 | POST   | `/auth/login`               | Log in a user and start a server session     |
-| POST   | `/auth/forgot-password`     | Request a generic password reset email       |
+| POST   | `/auth/forgot-password`     | Request a password reset for a known account |
 | POST   | `/auth/reset-password`      | Reset a password with an emailed token       |
 | POST   | `/auth/change-password`     | Change the authenticated user's password     |
 | POST   | `/auth/refresh`             | Refresh the current cookie session           |
@@ -342,7 +342,7 @@ hours by default, and can be used once.
 Password reset emails are also sent through Resend. Reset tokens are stored only as SHA-256 hashes,
 expire after 60 minutes by default, and can be used once. Successful password resets and authenticated
 password changes revoke all cookie sessions and previously issued bearer tokens. Forgot-password
-requests always return the same response for existing and unknown accounts.
+requests return `404` when no account exists for the supplied email address.
 
 Browser clients should send the cookie on protected requests:
 

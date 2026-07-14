@@ -15,6 +15,15 @@ Call Center Backend is a TypeScript and Express API for call center users to man
 
 ## Latest Updates
 
+### 2026-07-14 — Forgot-password account validation
+
+- **Type:** Fix
+- **Status:** In progress
+- **Summary:** Implemented account-aware forgot-password responses on `fix/forgot-password-email-validation`; the change is pending commit and merge.
+- **User impact:** Users who enter an unknown email receive a clear not-found message instead of being shown a successful reset request.
+- **Technical impact:** The password-reset service reports whether the normalized email belongs to an account, the endpoint returns `404` for unknown accounts, and API tests and OpenAPI guidance cover the new response.
+- **Related area:** Authentication
+
 ### 2026-07-13 — Individual note deletion and tutorial v2 API
 
 - **Type:** Feature

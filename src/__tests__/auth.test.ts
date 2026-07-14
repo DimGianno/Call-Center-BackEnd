@@ -644,7 +644,7 @@ describe("email verification", () => {
 });
 
 describe("password recovery", () => {
-    test("returns the same response for known and unknown accounts and stores only a token hash", async () => {
+    test("rejects unknown accounts and stores only a token hash for known accounts", async () => {
         await request(app).post("/auth/signup").send({
             name: "Recovery User",
             email: "recovery@example.com",
@@ -662,8 +662,10 @@ describe("password recovery", () => {
         const storedToken = await PasswordResetTokenDbModel.findOne({});
 
         expect(knownResponse.status).toBe(200);
-        expect(unknownResponse.status).toBe(200);
-        expect(unknownResponse.body).toEqual(knownResponse.body);
+        expect(unknownResponse.status).toBe(404);
+        expect(unknownResponse.body).toEqual({
+            error: "No account found with this email address."
+        });
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(storedToken?.token_hash).toBe(hashPasswordResetToken(token));
         expect(storedToken?.token_hash).not.toBe(token);
