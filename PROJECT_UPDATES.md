@@ -2,7 +2,7 @@
 
 ## Latest Stable State
 
-- **Last updated:** 2026-07-15
+- **Last updated:** 2026-07-22
 - **Current version:** 1.0.0
 - **Current status:** Active
 - **Primary branch:** `master`
@@ -14,6 +14,15 @@
 Call Center Backend is a TypeScript and Express API for call center users to manage their own call records, notes, archive state, and tutorial preferences. It provides cookie- and bearer-based authentication, email verification and password recovery, plus account-scoped realtime updates through Server-Sent Events. MongoDB provides persistent storage, while Swagger documentation, automated API tests, GitHub Actions, Docker, and Render deployments support development and delivery.
 
 ## Latest Updates
+
+### 2026-07-22 - Dependency security and tooling refresh
+
+- **Type:** Maintenance
+- **Status:** Completed
+- **Summary:** Updated safe same-major backend dependencies on `master` and cleared the npm audit report.
+- **User impact:** No behavior changes; the API keeps the same routes and authentication behavior while running on a refreshed dependency set.
+- **Technical impact:** Updated Mongoose, ESLint, Prettier, tsx, Supertest types, and TypeScript ESLint packages; resolved transitive `body-parser`, `brace-expansion`, and `js-yaml` advisories. Node types remain aligned with the Node 24 runtime, and the TypeScript 7 compiler plus TypeScript 6 compatibility API setup remains unchanged.
+- **Related area:** Maintenance
 
 ### 2026-07-14 — Forgot-password account validation
 

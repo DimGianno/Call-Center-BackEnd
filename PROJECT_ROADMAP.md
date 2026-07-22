@@ -4,7 +4,7 @@
 
 - **Project maturity:** Production-ready
 - **Actively developed:** Yes
-- **Last reviewed:** 2026-07-15
+- **Last reviewed:** 2026-07-22
 
 ## Known Limitations
 

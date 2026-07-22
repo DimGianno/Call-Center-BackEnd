@@ -81,6 +81,10 @@ This project was built as part of a backend engineering learning assignment, wit
 | ESLint            | Checks code quality and catches common issues               |
 | Prettier          | Enforces consistent code formatting                         |
 
+Dependency maintenance was last refreshed on 2026-07-22. The backend currently keeps Node types
+aligned with the Node.js 24 runtime, uses `@typescript/native` for the TypeScript 7 compiler, and
+keeps `typescript` as the TypeScript 6 compatibility API package for tooling that still expects it.
+
 ---
 
 ## Project Structure
@@ -816,6 +820,9 @@ docker build -t call-center-backend .
 ```
 
 The project is currently tested in CI using Node.js 24.
+
+The 2026-07-22 dependency refresh cleared the npm audit report while preserving the existing API
+behavior and TypeScript side-by-side setup.
 
 A GitHub ruleset is also configured so the protected branch requires CI checks to pass before merging.
 
